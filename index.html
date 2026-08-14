@@ -171,6 +171,17 @@
   .linha-campo-config{ display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--paper-deep); }
   .nome-campo-config{ font-weight:600; flex:0 0 140px; }
   .tipo-campo-config{ flex:1; font-size:13px; color:var(--ink-soft); }
+  .logomarca-login{ display:block; margin:0 auto 14px; max-width:170px; max-height:86px; object-fit:contain; }
+  .logomarca-topo{ height:28px; width:auto; object-fit:contain; border-radius:4px; background:#fff; padding:2px 5px; }
+  .preview-logo{ max-width:220px; max-height:110px; object-fit:contain; border:1px solid var(--rule); border-radius:8px; padding:10px; background:#fff; display:block; margin-bottom:12px; }
+  .acoes-logo{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .grade-cores{ display:flex; gap:16px; flex-wrap:wrap; margin:12px 0 16px; }
+  .campo-cor{ display:flex; flex-direction:column; gap:6px; align-items:flex-start; font-size:12px; color:var(--ink-soft); font-weight:500; }
+  .campo-cor input[type=color]{ width:56px; height:36px; padding:2px; border:1px solid var(--rule); border-radius:6px; background:#fff; cursor:pointer; }
+  .paleta-sugerida{ display:flex; gap:12px; flex-wrap:wrap; margin:14px 0; }
+  .amostra-cor{ width:64px; text-align:center; font-size:11px; color:var(--ink-soft); }
+  .amostra-cor .bloco{ width:64px; height:44px; border-radius:6px; border:1px solid var(--rule); margin-bottom:4px; }
+  .separador-config{ border:none; border-top:1px dashed var(--rule); margin:18px 0; }
   .cartao-grafico h3{ font-size:15px; margin-bottom:12px; }
   .legenda-fracoes{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; margin:-6px 0 10px; }
   .lista-fracoes{ display:flex; flex-direction:column; gap:7px; max-width:420px; }
@@ -296,6 +307,11 @@ let DEMO_DB = {
   camposPersonalizados: [
     { id: 1, nome:'Prazo', tipo:'data', opcoes:[], ordem:1 }
   ],
+  // identidade visual (Configurações → Identidade visual) — só em memória no modo demo
+  configuracoes: {
+    logomarca: null,
+    coresTema: null
+  },
   acompanhamento: [
     { id: gerarUuid(), assunto:'Financeiro', subassunto:'Balancetes das Empresas do Grupo Hildebrando', situacao:null, responsavel:'Amanda',
       acao:'[05/2026] Caixa: R$ 60.651,33; pendência de pagamento do pró-labore desde o início da empresa.', campos_extras:{ Prazo:'2026-09-01' } },
@@ -498,6 +514,32 @@ function demoExcluirUsuario(d){
     if(totalAdmins <= 1) return { ok:false, erro:'Não é possível excluir o último administrador do sistema.' };
   }
   DEMO_DB.usuarios.splice(idx,1);
+  return { ok:true };
+}
+
+// ---- Configurações (admin): identidade visual (logomarca + cores) ----
+function demoConfigSistema(){
+  return { ok:true, logomarca: DEMO_DB.configuracoes.logomarca, coresTema: DEMO_DB.configuracoes.coresTema };
+}
+function demoSalvarLogomarca(d){
+  if(!d.valor) return { ok:false, erro:'Nenhuma imagem enviada.' };
+  if(d.valor.length > LIMITE_LOGOMARCA_BYTES * 1.4) return { ok:false, erro:'A imagem é grande demais (máximo de 800KB).' };
+  DEMO_DB.configuracoes.logomarca = d.valor;
+  return { ok:true, logomarca: d.valor };
+}
+function demoRemoverLogomarca(){
+  DEMO_DB.configuracoes.logomarca = null;
+  return { ok:true };
+}
+function demoSalvarCoresTema(d){
+  const cores = d.cores || {};
+  const chavesEsperadas = ['paper','ink','accent','accentDeep'];
+  if(!chavesEsperadas.every(k=>/^#[0-9a-fA-F]{6}$/.test(cores[k]||''))) return { ok:false, erro:'Cores inválidas.' };
+  DEMO_DB.configuracoes.coresTema = cores;
+  return { ok:true, coresTema: cores };
+}
+function demoRestaurarCoresTema(){
+  DEMO_DB.configuracoes.coresTema = null;
   return { ok:true };
 }
 
@@ -708,6 +750,44 @@ async function supabaseExcluirUsuario(d){
   return { ok:true };
 }
 
+// ---- Configurações (admin): identidade visual (logomarca + cores) ----
+async function supabaseConfigSistema(){
+  const { data, error } = await clienteSupabase().from('configuracoes_sistema').select('chave, valor').in('chave', ['logomarca','cores_tema']);
+  if(error) return { ok:false, erro:'Falha ao carregar identidade visual: ' + error.message };
+  const mapa = {};
+  (data||[]).forEach(r=>{ mapa[r.chave] = r.valor; });
+  let coresTema = null;
+  if(mapa['cores_tema']){
+    try{ coresTema = JSON.parse(mapa['cores_tema']); } catch(erro){ coresTema = null; }
+  }
+  return { ok:true, logomarca: mapa['logomarca'] || null, coresTema };
+}
+async function supabaseSalvarLogomarca(d){
+  if(!d.valor) return { ok:false, erro:'Nenhuma imagem enviada.' };
+  if(d.valor.length > LIMITE_LOGOMARCA_BYTES * 1.4) return { ok:false, erro:'A imagem é grande demais (máximo de 800KB).' };
+  const { error } = await clienteSupabase().from('configuracoes_sistema').upsert({ chave:'logomarca', valor:d.valor });
+  if(error) return { ok:false, erro:'Falha ao salvar a logomarca: ' + error.message };
+  return { ok:true, logomarca: d.valor };
+}
+async function supabaseRemoverLogomarca(){
+  const { error } = await clienteSupabase().from('configuracoes_sistema').delete().eq('chave', 'logomarca');
+  if(error) return { ok:false, erro:'Falha ao remover a logomarca: ' + error.message };
+  return { ok:true };
+}
+async function supabaseSalvarCoresTema(d){
+  const cores = d.cores || {};
+  const chavesEsperadas = ['paper','ink','accent','accentDeep'];
+  if(!chavesEsperadas.every(k=>/^#[0-9a-fA-F]{6}$/.test(cores[k]||''))) return { ok:false, erro:'Cores inválidas.' };
+  const { error } = await clienteSupabase().from('configuracoes_sistema').upsert({ chave:'cores_tema', valor: JSON.stringify(cores) });
+  if(error) return { ok:false, erro:'Falha ao salvar as cores: ' + error.message };
+  return { ok:true, coresTema: cores };
+}
+async function supabaseRestaurarCoresTema(){
+  const { error } = await clienteSupabase().from('configuracoes_sistema').delete().eq('chave', 'cores_tema');
+  if(error) return { ok:false, erro:'Falha ao restaurar as cores: ' + error.message };
+  return { ok:true };
+}
+
 /* ============================================================================
    CHAMADA ÚNICA DE API — usa o Supabase real se CONFIG.SUPABASE_URL estiver
    preenchida, ou os dados de demonstração acima se estiver vazia.
@@ -741,6 +821,11 @@ function apiCall(action, data){
           case 'listarUsuarios': resultado = demoListarUsuarios(); break;
           case 'criarUsuario': resultado = demoCriarUsuario(data); break;
           case 'excluirUsuario': resultado = demoExcluirUsuario(data); break;
+          case 'configSistema': resultado = demoConfigSistema(); break;
+          case 'salvarLogomarca': resultado = demoSalvarLogomarca(data); break;
+          case 'removerLogomarca': resultado = demoRemoverLogomarca(); break;
+          case 'salvarCoresTema': resultado = demoSalvarCoresTema(data); break;
+          case 'restaurarCoresTema': resultado = demoRestaurarCoresTema(); break;
           default: resultado = { ok:false, erro:'Ação desconhecida.' };
         }
         resolve(resultado);
@@ -765,6 +850,11 @@ function apiCall(action, data){
     case 'listarUsuarios': return comTratativaDeErro(()=>supabaseListarUsuarios());
     case 'criarUsuario': return comTratativaDeErro(()=>supabaseCriarUsuario(data));
     case 'excluirUsuario': return comTratativaDeErro(()=>supabaseExcluirUsuario(data));
+    case 'configSistema': return comTratativaDeErro(()=>supabaseConfigSistema());
+    case 'salvarLogomarca': return comTratativaDeErro(()=>supabaseSalvarLogomarca(data));
+    case 'removerLogomarca': return comTratativaDeErro(()=>supabaseRemoverLogomarca());
+    case 'salvarCoresTema': return comTratativaDeErro(()=>supabaseSalvarCoresTema(data));
+    case 'restaurarCoresTema': return comTratativaDeErro(()=>supabaseRestaurarCoresTema());
     default: return Promise.resolve({ ok:false, erro:'Ação desconhecida.' });
   }
 }
@@ -792,7 +882,11 @@ function estadoInicial(){
     configNovaOpcao:'',
     configErro:null,
     modalNovoCampo:null,
-    modalNovoUsuario:null
+    modalNovoUsuario:null,
+    logomarca:null,
+    coresTema:null,
+    configLogoPreview:null,
+    configPaletaSugerida:null
   };
 }
 let estado = estadoInicial();
@@ -836,6 +930,96 @@ function barraProgresso(){
 const PALETA = ['#BD8A2E','#3E6B54','#48566E','#A23A3A','#7A5C9E','#2E7D8C'];
 function corPaleta(i){ return PALETA[((i%PALETA.length)+PALETA.length)%PALETA.length]; }
 
+/* ============================================================================
+   IDENTIDADE VISUAL — logomarca + esquema de cores do tema, aplicados via
+   variáveis CSS no :root. Guardado em configuracoes_sistema (chaves
+   'logomarca' e 'cores_tema'), então valem para todo mundo que acessar,
+   não é preferência pessoal salva no navegador.
+   ========================================================================== */
+const CORES_TEMA_PADRAO = { paper:'#F2EEE2', ink:'#182238', accent:'#BD8A2E', accentDeep:'#8C6A22' };
+const LIMITE_LOGOMARCA_BYTES = 800 * 1024;
+
+function hexParaRgb(hex){
+  let h = String(hex||'').replace('#','');
+  if(h.length===3) h = h.split('').map(c=>c+c).join('');
+  const num = parseInt(h,16);
+  return { r:(num>>16)&255, g:(num>>8)&255, b:num&255 };
+}
+function rgbParaHex(r,g,b){
+  return '#' + [r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+function misturarCores(hexA, hexB, pesoB){
+  const a = hexParaRgb(hexA), b = hexParaRgb(hexB);
+  return rgbParaHex(a.r+(b.r-a.r)*pesoB, a.g+(b.g-a.g)*pesoB, a.b+(b.b-a.b)*pesoB);
+}
+function escurecer(hex, quantidade){ return misturarCores(hex, '#000000', quantidade); }
+function clarear(hex, quantidade){ return misturarCores(hex, '#FFFFFF', quantidade); }
+function luminanciaHex(hex){ const {r,g,b}=hexParaRgb(hex); return (0.299*r+0.587*g+0.114*b)/255; }
+function saturacaoAproxHex(hex){ const {r,g,b}=hexParaRgb(hex); const max=Math.max(r,g,b), min=Math.min(r,g,b); return max===0?0:(max-min)/max; }
+
+// aplica as 4 cores "de marca" + deriva os tons secundários do tema (fundo
+// escurecido, régua, cartão, tinta suave), sem precisar guardar cada um
+function aplicarTemaCores(cores){
+  const c = Object.assign({}, CORES_TEMA_PADRAO, cores||{});
+  const raiz = document.documentElement.style;
+  raiz.setProperty('--paper', c.paper);
+  raiz.setProperty('--ink', c.ink);
+  raiz.setProperty('--accent', c.accent);
+  raiz.setProperty('--accent-deep', c.accentDeep);
+  raiz.setProperty('--paper-deep', escurecer(c.paper, 0.06));
+  raiz.setProperty('--rule', escurecer(c.paper, 0.18));
+  raiz.setProperty('--card', clarear(c.paper, 0.85));
+  raiz.setProperty('--ink-soft', misturarCores(c.ink, c.paper, 0.35));
+}
+
+// lê os pixels da imagem (canvas, tudo no navegador — sem enviar a imagem
+// pra nenhum serviço externo) e agrupa em "baldes" de cor pra achar as
+// cores mais frequentes
+function extrairCoresDeImagem(dataUrl){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const tam = 48;
+        const canvas = document.createElement('canvas');
+        canvas.width = tam; canvas.height = tam;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, tam, tam);
+        const dados = ctx.getImageData(0, 0, tam, tam).data;
+        const baldes = {};
+        for(let i=0; i<dados.length; i+=4){
+          if(dados[i+3] < 128) continue; // ignora pixels transparentes
+          const r = Math.round(dados[i]/32)*32, g = Math.round(dados[i+1]/32)*32, b = Math.round(dados[i+2]/32)*32;
+          const chave = r+','+g+','+b;
+          baldes[chave] = (baldes[chave]||0) + 1;
+        }
+        const cores = Object.entries(baldes).map(([chave, contagem])=>{
+          const [r,g,b] = chave.split(',').map(Number);
+          const hex = rgbParaHex(r,g,b);
+          return { hex, contagem, luminancia: luminanciaHex(hex), saturacao: saturacaoAproxHex(hex) };
+        });
+        resolve(cores);
+      } catch(erro){ reject(erro); }
+    };
+    img.onerror = () => reject(new Error('Não foi possível processar a imagem.'));
+    img.src = dataUrl;
+  });
+}
+
+// escolhe, entre as cores extraídas, qual vira destaque/tinta/fundo
+function sugerirPaletaDeCores(cores){
+  if(!cores || cores.length===0) return Object.assign({}, CORES_TEMA_PADRAO);
+  const porFrequencia = cores.slice().sort((a,b)=>b.contagem-a.contagem);
+  const candidatosDestaque = cores.filter(c=>c.luminancia>0.15 && c.luminancia<0.85)
+    .sort((a,b)=>(b.saturacao*b.contagem)-(a.saturacao*a.contagem));
+  const destaque = (candidatosDestaque[0] || porFrequencia[0]).hex;
+  const maisEscura = cores.slice().sort((a,b)=>a.luminancia-b.luminancia)[0];
+  const maisClara = cores.slice().sort((a,b)=>b.luminancia-a.luminancia)[0];
+  const tinta = (maisEscura && maisEscura.luminancia < 0.35) ? maisEscura.hex : CORES_TEMA_PADRAO.ink;
+  const fundoBase = (maisClara && maisClara.luminancia > 0.55) ? maisClara.hex : CORES_TEMA_PADRAO.paper;
+  return { paper: clarear(fundoBase, 0.75), ink: tinta, accent: destaque, accentDeep: escurecer(destaque, 0.22) };
+}
+
 function renderizar(){
   document.getElementById('app').innerHTML = estado.usuario ? viewShell() : viewLogin();
 }
@@ -853,6 +1037,7 @@ function viewLogin(){
       <div class="area-login-centro">
         <div class="cartao-login">
           <div class="selo">Painel</div>
+          ${estado.logomarca ? `<img src="${estado.logomarca}" alt="Logomarca" class="logomarca-login">` : ''}
           <h1>Parakos</h1>
           <p class="subtitulo">Entre com seu usuário para começar.</p>
           <form onsubmit="app.entrar(event)">
@@ -879,7 +1064,7 @@ function viewShell(){
       ${barraProgressoGlobal()}
       ${!CONFIG.SUPABASE_URL ? '<div class="faixa-demo">MODO DEMONSTRAÇÃO — dados fictícios, nada é salvo de verdade</div>' : ''}
       <header class="topo">
-        <div class="marca"><span class="marca-selo">✓</span> Parakos</div>
+        <div class="marca">${estado.logomarca ? `<img src="${estado.logomarca}" alt="Logomarca" class="logomarca-topo">` : '<span class="marca-selo">✓</span>'} Parakos</div>
         <div class="usuario-info">
           <span class="cracha cracha-${escapeHtml(estado.papel)}">${escapeHtml(estado.papel)}</span>
           <span>${escapeHtml(estado.usuario)}</span>
@@ -1244,6 +1429,58 @@ function viewConfiguracoes(){
     ${estado.configErro ? `<div class="aviso-discreto">${escapeHtml(estado.configErro)}</div>` : ''}
 
     <div class="cartao-config">
+      <h3>Identidade visual</h3>
+      <p class="subtitulo" style="margin:0 0 14px">A logomarca aparece no cabeçalho e na tela de login. As cores valem para todo mundo que acessar o painel.</p>
+
+      ${estado.configLogoPreview ? `<img src="${estado.configLogoPreview}" alt="Pré-visualização da logomarca" class="preview-logo">`
+        : (estado.logomarca ? `<img src="${estado.logomarca}" alt="Logomarca atual" class="preview-logo">` : '<p class="vazio-inline">Nenhuma logomarca enviada ainda.</p>')}
+
+      <div class="acoes-logo">
+        <label class="botao-secundario" style="display:inline-flex;align-items:center">
+          Escolher imagem…
+          <input type="file" accept="image/*" style="display:none" onchange="app.selecionarArquivoLogo(this)" ${estado.enviando?'disabled':''}>
+        </label>
+        ${estado.configLogoPreview ? `
+          <button type="button" class="botao-primario" onclick="app.salvarLogomarca()" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Salvar logomarca'}</button>
+          <button type="button" class="botao-secundario" onclick="app.cancelarPreviewLogo()" ${estado.enviando?'disabled':''}>Cancelar</button>
+        ` : (estado.logomarca ? `<button type="button" class="botao-secundario" onclick="app.removerLogomarca()" ${estado.enviando?'disabled':''}>Remover logomarca</button>` : '')}
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 4px">Tamanho máximo: 800KB.</p>
+
+      ${(estado.logomarca || estado.configLogoPreview) ? `
+        <button type="button" class="botao-secundario" style="margin-top:6px" onclick="app.sugerirPaletaLogo()" ${estado.enviando?'disabled':''}>🎨 Sugerir cores a partir da logomarca</button>
+      ` : ''}
+
+      ${estado.configPaletaSugerida ? `
+        <div class="paleta-sugerida">
+          ${[['paper','Fundo'],['ink','Tinta'],['accent','Destaque'],['accentDeep','Destaque escuro']].map(([chave,rotulo])=>`
+            <div class="amostra-cor">
+              <div class="bloco" style="background:${estado.configPaletaSugerida[chave]}"></div>
+              ${escapeHtml(rotulo)}<br><span class="mono">${escapeHtml(estado.configPaletaSugerida[chave])}</span>
+            </div>`).join('')}
+        </div>
+        <button type="button" class="botao-primario" onclick="app.aplicarPaletaSugerida()" ${estado.enviando?'disabled':''}>${estado.enviando?'Aplicando…':'Aplicar esta paleta'}</button>
+      ` : ''}
+
+      <hr class="separador-config">
+
+      <h3 style="font-size:15px">Escolher cores manualmente</h3>
+      <p class="subtitulo" style="margin:0 0 4px">Ou defina as cores você mesmo, sem depender da logomarca.</p>
+      <form onsubmit="app.salvarCoresManual(event)">
+        <div class="grade-cores">
+          <label class="campo-cor">Fundo<input type="color" id="corPaper" value="${(estado.coresTema&&estado.coresTema.paper)||CORES_TEMA_PADRAO.paper}"></label>
+          <label class="campo-cor">Tinta<input type="color" id="corInk" value="${(estado.coresTema&&estado.coresTema.ink)||CORES_TEMA_PADRAO.ink}"></label>
+          <label class="campo-cor">Destaque<input type="color" id="corAccent" value="${(estado.coresTema&&estado.coresTema.accent)||CORES_TEMA_PADRAO.accent}"></label>
+          <label class="campo-cor">Destaque escuro<input type="color" id="corAccentDeep" value="${(estado.coresTema&&estado.coresTema.accentDeep)||CORES_TEMA_PADRAO.accentDeep}"></label>
+        </div>
+        <div class="acoes-logo">
+          <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Salvar cores'}</button>
+          <button type="button" class="botao-secundario" onclick="app.restaurarCoresPadrao()" ${estado.enviando?'disabled':''}>Restaurar cores padrão</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="cartao-config">
       <h3>Respostas das listas</h3>
       <p class="subtitulo" style="margin:0 0 14px">Adicione ou remova as opções que aparecem nos menus suspensos.</p>
       <div class="abas-config">
@@ -1393,7 +1630,10 @@ const app = {
   sair(){
     if(estado.timerAuto) clearInterval(estado.timerAuto);
     limparSessaoSalva();
+    const { logomarca, coresTema } = estado; // identidade visual não é da sessão: mantém na tela de login
     estado = estadoInicial();
+    estado.logomarca = logomarca;
+    estado.coresTema = coresTema;
     renderizar();
   },
 
@@ -1747,15 +1987,145 @@ const app = {
       estado.configErro = resp.erro || 'Não foi possível excluir o usuário.';
     }
     renderizar();
+  },
+
+  /* ---------- Identidade visual (admin) ---------- */
+  selecionarArquivoLogo(inputEl){
+    const arquivo = inputEl.files && inputEl.files[0];
+    if(!arquivo) return;
+    if(arquivo.size > LIMITE_LOGOMARCA_BYTES){
+      estado.configErro = 'A imagem é grande demais (máximo de 800KB).';
+      renderizar();
+      return;
+    }
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      estado.configLogoPreview = leitor.result;
+      estado.configPaletaSugerida = null;
+      estado.configErro = null;
+      renderizar();
+    };
+    leitor.onerror = () => {
+      estado.configErro = 'Não foi possível ler essa imagem.';
+      renderizar();
+    };
+    leitor.readAsDataURL(arquivo);
+  },
+  cancelarPreviewLogo(){
+    estado.configLogoPreview = null;
+    renderizar();
+  },
+  async salvarLogomarca(){
+    if(!estado.configLogoPreview) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('salvarLogomarca', { valor: estado.configLogoPreview });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.logomarca = resp.logomarca;
+      estado.configLogoPreview = null;
+      estado.configErro = null;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível salvar a logomarca.';
+    }
+    renderizar();
+  },
+  async removerLogomarca(){
+    if(!confirm('Remover a logomarca atual?')) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('removerLogomarca', {});
+    estado.enviando = false;
+    if(resp.ok){
+      estado.logomarca = null;
+      estado.configPaletaSugerida = null;
+      estado.configErro = null;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível remover a logomarca.';
+    }
+    renderizar();
+  },
+  async sugerirPaletaLogo(){
+    const origem = estado.configLogoPreview || estado.logomarca;
+    if(!origem) return;
+    estado.configErro = null;
+    try{
+      const cores = await extrairCoresDeImagem(origem);
+      estado.configPaletaSugerida = sugerirPaletaDeCores(cores);
+    } catch(erro){
+      estado.configErro = 'Não foi possível analisar essa imagem para sugerir cores.';
+    }
+    renderizar();
+  },
+  async aplicarPaletaSugerida(){
+    if(!estado.configPaletaSugerida) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('salvarCoresTema', { cores: estado.configPaletaSugerida });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.coresTema = resp.coresTema;
+      aplicarTemaCores(estado.coresTema);
+      estado.configPaletaSugerida = null;
+      estado.configErro = null;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível aplicar a paleta.';
+    }
+    renderizar();
+  },
+  async salvarCoresManual(e){
+    e.preventDefault();
+    const cores = {
+      paper: document.getElementById('corPaper').value,
+      ink: document.getElementById('corInk').value,
+      accent: document.getElementById('corAccent').value,
+      accentDeep: document.getElementById('corAccentDeep').value
+    };
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('salvarCoresTema', { cores });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.coresTema = resp.coresTema;
+      aplicarTemaCores(estado.coresTema);
+      estado.configErro = null;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível salvar as cores.';
+    }
+    renderizar();
+  },
+  async restaurarCoresPadrao(){
+    if(!confirm('Restaurar as cores padrão do sistema?')) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('restaurarCoresTema', {});
+    estado.enviando = false;
+    if(resp.ok){
+      estado.coresTema = null;
+      aplicarTemaCores(null);
+      estado.configErro = null;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível restaurar as cores.';
+    }
+    renderizar();
   }
 };
 window.app = app;
 
 /* ============================================================================
-   INICIALIZAÇÃO — se já houver uma sessão salva (usuário logado antes de
+   INICIALIZAÇÃO — carrega a identidade visual (logomarca + cores) antes de
+   qualquer outra coisa, pra já aparecer certa na primeira tela (login ou
+   painel). Depois, se já houver uma sessão salva (usuário logado antes de
    atualizar a página), restaura ela em vez de voltar para a tela de login.
    ========================================================================== */
 (async function iniciarApp(){
+  const respConfig = await apiCall('configSistema', {});
+  if(respConfig.ok){
+    estado.logomarca = respConfig.logomarca || null;
+    estado.coresTema = respConfig.coresTema || null;
+  }
+  aplicarTemaCores(estado.coresTema);
+
   const sessaoSalva = lerSessaoSalva();
   if(!sessaoSalva || !sessaoSalva.usuario){
     renderizar();
@@ -1775,7 +2145,10 @@ window.app = app;
   } else {
     // não foi possível confirmar a sessão (banco fora do ar, etc.) — volta pro login
     limparSessaoSalva();
+    const { logomarca, coresTema } = estado;
     estado = estadoInicial();
+    estado.logomarca = logomarca;
+    estado.coresTema = coresTema;
     estado.erroLogin = 'Não foi possível restaurar sua sessão. Entre novamente.';
     renderizar();
   }
