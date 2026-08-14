@@ -259,7 +259,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.0.0',
+  VERSAO: 'v1.1.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -283,11 +283,11 @@ let DEMO_DB = {
     { usuario:'operador', senha:'operador', papel:'operador' }
   ],
   opcoes: [
-    { categoria:'Assunto', valor:'Administrativo' },
-    { categoria:'Assunto', valor:'Processos' },
-    { categoria:'Assunto', valor:'Fiscal' },
-    { categoria:'Assunto', valor:'Financeiro' },
-    { categoria:'Assunto', valor:'Relatórios' },
+    { categoria:'Franquia', valor:'Administrativo' },
+    { categoria:'Franquia', valor:'Processos' },
+    { categoria:'Franquia', valor:'Fiscal' },
+    { categoria:'Franquia', valor:'Financeiro' },
+    { categoria:'Franquia', valor:'Relatórios' },
     { categoria:'Situacao', valor:'Pendente' },
     { categoria:'Situacao', valor:'Em andamento' },
     { categoria:'Situacao', valor:'Concluído' },
@@ -330,12 +330,12 @@ let DEMO_DB = {
 // os campos personalizados (criados pelo admin) NÃO entram aqui — eles ficam
 // guardados dentro da coluna "campos_extras" (formato flexível), não como
 // colunas fixas, porque podem ser criados/removidos a qualquer momento.
-const MAPA_CAMPOS_DB = { Assunto:'assunto', SubAssunto:'subassunto', Situação:'situacao', Responsável:'responsavel', Ação:'acao' };
+const MAPA_CAMPOS_DB = { Franquia:'assunto', SubAssunto:'subassunto', Situação:'situacao', Responsável:'responsavel', Ação:'acao' };
 
 function linhaParaRegistro(linha, camposPersonalizados){
   const registro = {
     ID: linha.id,
-    Assunto: linha.assunto,
+    Franquia: linha.assunto,
     SubAssunto: linha.subassunto,
     Situação: linha.situacao,
     Responsável: linha.responsavel,
@@ -365,7 +365,7 @@ function demoOpcoesPorCategoria(categoria){
 function demoEsquema(){
   const camposPersonalizados = DEMO_DB.camposPersonalizados.slice().sort((a,b)=>a.ordem-b.ordem);
   const colunas = [
-    { nome:'Assunto', tipo:'select', opcoes: demoOpcoesPorCategoria('Assunto') },
+    { nome:'Franquia', tipo:'select', opcoes: demoOpcoesPorCategoria('Franquia') },
     { nome:'SubAssunto', tipo:'select', opcoes: demoOpcoesPorCategoria('SubAssunto') },
     { nome:'Situação', tipo:'select', opcoes: demoOpcoesPorCategoria('Situacao') },
     { nome:'Responsável', tipo:'select', opcoes: demoOpcoesPorCategoria('Responsavel') },
@@ -376,10 +376,13 @@ function demoEsquema(){
 }
 function demoLogin(d){
   const usuario = DEMO_DB.usuarios.find(u=>String(u.usuario)===String(d.usuario) && String(u.senha)===String(d.senha));
-  return usuario ? { ok:true, usuario:usuario.usuario, papel:usuario.papel||'operador' } : { ok:false, erro:'Usuário ou senha inválidos.' };
+  return usuario ? { ok:true, usuario:usuario.usuario, papel:usuario.papel||'operador', franquia:usuario.franquia||null } : { ok:false, erro:'Usuário ou senha inválidos.' };
 }
-function demoListar(){
-  return { ok:true, registros: DEMO_DB.acompanhamento.map(l=>linhaParaRegistro(l, DEMO_DB.camposPersonalizados)) };
+function demoListar(d){
+  d = d || {};
+  let linhas = DEMO_DB.acompanhamento;
+  if(d.usuarioFranquia) linhas = linhas.filter(l=>l.assunto===d.usuarioFranquia);
+  return { ok:true, registros: linhas.map(l=>linhaParaRegistro(l, DEMO_DB.camposPersonalizados)) };
 }
 function demoVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
   if(!subassunto) return null;
@@ -388,6 +391,9 @@ function demoVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
 }
 function demoCriar(d){
   const registro = d.registro || {};
+  if(d.usuarioFranquia && String(registro.Franquia||'') !== String(d.usuarioFranquia)){
+    return { ok:false, erro:'Você só pode lançar registros da Franquia à qual está vinculado.' };
+  }
   const erro = demoVerificarSubAssuntoDuplicado(registro.SubAssunto, null);
   if(erro) return { ok:false, erro };
   const novaLinha = Object.assign({ id: gerarUuid() }, registroParaLinha(registro, DEMO_DB.camposPersonalizados));
@@ -397,7 +403,13 @@ function demoCriar(d){
 function demoAtualizar(d){
   const linha = DEMO_DB.acompanhamento.find(l=>l.id===d.id);
   if(!linha) return { ok:false, erro:'Registro não encontrado.' };
+  if(d.usuarioFranquia && String(linha.assunto) !== String(d.usuarioFranquia)){
+    return { ok:false, erro:'Você não tem permissão para editar registros de outra Franquia.' };
+  }
   const registro = d.registro || {};
+  if(d.usuarioFranquia && registro.Franquia !== undefined && String(registro.Franquia) !== String(d.usuarioFranquia)){
+    return { ok:false, erro:'Você não tem permissão para mover um registro para outra Franquia.' };
+  }
   if(registro.SubAssunto !== undefined && String(registro.SubAssunto) !== String(linha.subassunto)){
     const erro = demoVerificarSubAssuntoDuplicado(registro.SubAssunto, d.id);
     if(erro) return { ok:false, erro };
@@ -406,8 +418,12 @@ function demoAtualizar(d){
   return { ok:true };
 }
 function demoExcluir(d){
-  const idx = DEMO_DB.acompanhamento.findIndex(l=>l.id===d.id);
-  if(idx===-1) return { ok:false, erro:'Registro não encontrado.' };
+  const linha = DEMO_DB.acompanhamento.find(l=>l.id===d.id);
+  if(!linha) return { ok:false, erro:'Registro não encontrado.' };
+  if(d.usuarioFranquia && String(linha.assunto) !== String(d.usuarioFranquia)){
+    return { ok:false, erro:'Você não tem permissão para excluir registros de outra Franquia.' };
+  }
+  const idx = DEMO_DB.acompanhamento.indexOf(linha);
   DEMO_DB.acompanhamento.splice(idx,1);
   return { ok:true };
 }
@@ -418,9 +434,12 @@ function demoTrocarSenha(d){
   usuario.senha = d.novaSenha;
   return { ok:true };
 }
-function demoDashboard(){
+function demoDashboard(d){
+  d = d || {};
   const infoAba = demoEsquema().abas[0];
-  const registros = DEMO_DB.acompanhamento.map(l=>linhaParaRegistro(l, DEMO_DB.camposPersonalizados));
+  let linhasBase = DEMO_DB.acompanhamento;
+  if(d.usuarioFranquia) linhasBase = linhasBase.filter(l=>l.assunto===d.usuarioFranquia);
+  const registros = linhasBase.map(l=>linhaParaRegistro(l, DEMO_DB.camposPersonalizados));
   const distribuicoes = {};
   let colunaHistorico=null, colunaSubAssunto=null;
   infoAba.colunas.forEach(c=>{
@@ -470,7 +489,7 @@ function demoListarCampos(){
 function demoCriarCampo(d){
   const nome = (d.nome||'').trim();
   if(!nome) return { ok:false, erro:'Dê um nome para o campo.' };
-  const nomesReservados = ['id','assunto','subassunto','situação','responsável','ação'];
+  const nomesReservados = ['id','franquia','subassunto','situação','responsável','ação'];
   if(nomesReservados.includes(nome.toLowerCase())) return { ok:false, erro:'Esse nome já é usado por um campo padrão do sistema.' };
   const jaExiste = DEMO_DB.camposPersonalizados.some(c=>c.nome.toLowerCase()===nome.toLowerCase());
   if(jaExiste) return { ok:false, erro:'Já existe um campo personalizado com esse nome.' };
@@ -491,18 +510,19 @@ function demoExcluirCampo(d){
 
 // ---- Configurações (admin): gerenciar usuários ----
 function demoListarUsuarios(){
-  return { ok:true, usuarios: DEMO_DB.usuarios.map(u=>({ usuario:u.usuario, papel:u.papel })) };
+  return { ok:true, usuarios: DEMO_DB.usuarios.map(u=>({ usuario:u.usuario, papel:u.papel, franquia:u.franquia||null })) };
 }
 function demoCriarUsuario(d){
   const usuario = (d.usuario||'').trim();
   const senha = d.senha||'';
   const papel = (d.papel==='admin') ? 'admin' : 'operador';
+  const franquia = d.franquia || null;
   if(!usuario) return { ok:false, erro:'Dê um nome de usuário.' };
   if(senha.length < 4) return { ok:false, erro:'A senha precisa ter pelo menos 4 caracteres.' };
   const jaExiste = DEMO_DB.usuarios.some(u=>u.usuario===usuario);
   if(jaExiste) return { ok:false, erro:'Já existe um usuário com esse nome.' };
-  DEMO_DB.usuarios.push({ usuario, senha, papel });
-  return { ok:true, usuario:{ usuario, papel } };
+  DEMO_DB.usuarios.push({ usuario, senha, papel, franquia });
+  return { ok:true, usuario:{ usuario, papel, franquia } };
 }
 function demoExcluirUsuario(d){
   if(d.usuario === d.usuarioLogado) return { ok:false, erro:'Você não pode excluir o próprio usuário enquanto estiver logado com ele.' };
@@ -566,7 +586,7 @@ async function supabaseEsquema(){
   data.forEach(r=>{ (mapa[r.categoria] = mapa[r.categoria]||[]).push(r.valor); });
   const camposPersonalizados = await supabaseCamposPersonalizados();
   const colunas = [
-    { nome:'Assunto', tipo:'select', opcoes: mapa['Assunto']||[] },
+    { nome:'Franquia', tipo:'select', opcoes: mapa['Franquia']||[] },
     { nome:'SubAssunto', tipo:'select', opcoes: mapa['SubAssunto']||[] },
     { nome:'Situação', tipo:'select', opcoes: mapa['Situacao']||[] },
     { nome:'Responsável', tipo:'select', opcoes: mapa['Responsavel']||[] },
@@ -576,15 +596,18 @@ async function supabaseEsquema(){
   return { ok:true, abas: [{ nome:'Acompanhamento', colunas }] };
 }
 async function supabaseLogin(d){
-  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel')
+  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel, franquia')
     .eq('usuario', d.usuario).eq('senha', d.senha).maybeSingle();
   if(error) return { ok:false, erro:'Falha de conexão com o banco: ' + error.message };
   if(!data) return { ok:false, erro:'Usuário ou senha inválidos.' };
-  return { ok:true, usuario:data.usuario, papel:data.papel||'operador' };
+  return { ok:true, usuario:data.usuario, papel:data.papel||'operador', franquia:data.franquia||null };
 }
-async function supabaseListar(){
+async function supabaseListar(d){
+  d = d || {};
   const camposPersonalizados = await supabaseCamposPersonalizados();
-  const { data, error } = await clienteSupabase().from('acompanhamento').select('*');
+  let consulta = clienteSupabase().from('acompanhamento').select('*');
+  if(d.usuarioFranquia) consulta = consulta.eq('assunto', d.usuarioFranquia);
+  const { data, error } = await consulta;
   if(error) return { ok:false, erro:'Falha ao listar: ' + error.message };
   return { ok:true, registros: data.map(l=>linhaParaRegistro(l, camposPersonalizados)) };
 }
@@ -600,6 +623,9 @@ async function supabaseVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
 }
 async function supabaseCriar(d){
   const registro = d.registro || {};
+  if(d.usuarioFranquia && String(registro.Franquia||'') !== String(d.usuarioFranquia)){
+    return { ok:false, erro:'Você só pode lançar registros da Franquia à qual está vinculado.' };
+  }
   const erroDuplicado = await supabaseVerificarSubAssuntoDuplicado(registro.SubAssunto, null);
   if(erroDuplicado) return { ok:false, erro:erroDuplicado };
   const camposPersonalizados = await supabaseCamposPersonalizados();
@@ -609,6 +635,15 @@ async function supabaseCriar(d){
 }
 async function supabaseAtualizar(d){
   const registro = d.registro || {};
+  if(d.usuarioFranquia){
+    const { data: atualFranquia } = await clienteSupabase().from('acompanhamento').select('assunto').eq('id', d.id).maybeSingle();
+    if(!atualFranquia || String(atualFranquia.assunto) !== String(d.usuarioFranquia)){
+      return { ok:false, erro:'Você não tem permissão para editar registros de outra Franquia.' };
+    }
+    if(registro.Franquia !== undefined && String(registro.Franquia) !== String(d.usuarioFranquia)){
+      return { ok:false, erro:'Você não tem permissão para mover um registro para outra Franquia.' };
+    }
+  }
   if(registro.SubAssunto !== undefined){
     const { data: atual } = await clienteSupabase().from('acompanhamento').select('subassunto').eq('id', d.id).maybeSingle();
     if(atual && String(atual.subassunto) !== String(registro.SubAssunto)){
@@ -622,6 +657,12 @@ async function supabaseAtualizar(d){
   return { ok:true };
 }
 async function supabaseExcluir(d){
+  if(d.usuarioFranquia){
+    const { data: atual } = await clienteSupabase().from('acompanhamento').select('assunto').eq('id', d.id).maybeSingle();
+    if(!atual || String(atual.assunto) !== String(d.usuarioFranquia)){
+      return { ok:false, erro:'Você não tem permissão para excluir registros de outra Franquia.' };
+    }
+  }
   const { error } = await clienteSupabase().from('acompanhamento').delete().eq('id', d.id);
   if(error) return { ok:false, erro:'Falha ao excluir: ' + error.message };
   return { ok:true };
@@ -636,12 +677,15 @@ async function supabaseTrocarSenha(d){
   if(erroUpdate) return { ok:false, erro:'Falha ao trocar senha: ' + erroUpdate.message };
   return { ok:true };
 }
-async function supabaseDashboard(){
+async function supabaseDashboard(d){
+  d = d || {};
   const respostaEsquema = await supabaseEsquema();
   if(!respostaEsquema.ok) return respostaEsquema;
   const infoAba = respostaEsquema.abas[0];
   const camposPersonalizados = infoAba.colunas.filter(c=>c.personalizado);
-  const { data, error } = await clienteSupabase().from('acompanhamento').select('*');
+  let consulta = clienteSupabase().from('acompanhamento').select('*');
+  if(d.usuarioFranquia) consulta = consulta.eq('assunto', d.usuarioFranquia);
+  const { data, error } = await consulta;
   if(error) return { ok:false, erro:'Falha ao calcular indicadores: ' + error.message };
   const registros = data.map(l=>linhaParaRegistro(l, camposPersonalizados));
 
@@ -699,7 +743,7 @@ async function supabaseListarCampos(){
 async function supabaseCriarCampo(d){
   const nome = (d.nome||'').trim();
   if(!nome) return { ok:false, erro:'Dê um nome para o campo.' };
-  const nomesReservados = ['id','assunto','subassunto','situação','responsável','ação'];
+  const nomesReservados = ['id','franquia','subassunto','situação','responsável','ação'];
   if(nomesReservados.includes(nome.toLowerCase())) return { ok:false, erro:'Esse nome já é usado por um campo padrão do sistema.' };
   const { count } = await clienteSupabase().from('campos_personalizados').select('*', { count:'exact', head:true });
   const { data, error } = await clienteSupabase().from('campos_personalizados')
@@ -718,7 +762,7 @@ async function supabaseExcluirCampo(d){
 
 // ---- Configurações (admin): gerenciar usuários ----
 async function supabaseListarUsuarios(){
-  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel').order('usuario');
+  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel, franquia').order('usuario');
   if(error) return { ok:false, erro:'Falha ao carregar usuários: ' + error.message };
   return { ok:true, usuarios:data };
 }
@@ -726,9 +770,10 @@ async function supabaseCriarUsuario(d){
   const usuario = (d.usuario||'').trim();
   const senha = d.senha||'';
   const papel = (d.papel==='admin') ? 'admin' : 'operador';
+  const franquia = d.franquia || null;
   if(!usuario) return { ok:false, erro:'Dê um nome de usuário.' };
   if(senha.length < 4) return { ok:false, erro:'A senha precisa ter pelo menos 4 caracteres.' };
-  const { data, error } = await clienteSupabase().from('usuarios').insert({ usuario, senha, papel }).select('usuario, papel').single();
+  const { data, error } = await clienteSupabase().from('usuarios').insert({ usuario, senha, papel, franquia }).select('usuario, papel, franquia').single();
   if(error){
     if(error.code === '23505') return { ok:false, erro:'Já existe um usuário com esse nome.' };
     return { ok:false, erro:'Falha ao criar usuário: ' + error.message };
@@ -864,7 +909,7 @@ function apiCall(action, data){
    ========================================================================== */
 function estadoInicial(){
   return {
-    usuario:null, papel:null, erroLogin:null,
+    usuario:null, papel:null, franquia:null, erroLogin:null,
     schema:null, abaAtiva:'dashboard',
     cache:{}, painel:null,
     ultimaAtualizacao:null, carregando:false, erroAtualizacao:null,
@@ -875,7 +920,7 @@ function estadoInicial(){
     filtrosColuna:{},
     enviando:false,
     expandidos:new Set(),
-    configCategoria:'Assunto',
+    configCategoria:'Franquia',
     configOpcoes:null,
     configCampos:null,
     configUsuarios:null,
@@ -895,8 +940,8 @@ let estado = estadoInicial();
 // a página (F5). Usa sessionStorage (dura enquanto a aba estiver aberta;
 // fecha a aba/navegador e a sessão se encerra sozinha).
 const CHAVE_SESSAO = 'acompanhamentus_sessao';
-function salvarSessao(usuario, papel){
-  try { sessionStorage.setItem(CHAVE_SESSAO, JSON.stringify({ usuario, papel })); }
+function salvarSessao(usuario, papel, franquia){
+  try { sessionStorage.setItem(CHAVE_SESSAO, JSON.stringify({ usuario, papel, franquia: franquia||null })); }
   catch(erro){ /* navegador sem sessionStorage disponível: painel continua funcionando, só não guarda a sessão */ }
 }
 function lerSessaoSalva(){
@@ -1067,6 +1112,7 @@ function viewShell(){
         <div class="marca">${estado.logomarca ? `<img src="${estado.logomarca}" alt="Logomarca" class="logomarca-topo">` : '<span class="marca-selo">✓</span>'} Parakos</div>
         <div class="usuario-info">
           <span class="cracha cracha-${escapeHtml(estado.papel)}">${escapeHtml(estado.papel)}</span>
+          ${estado.franquia ? `<span class="cracha" title="Franquia vinculada">${escapeHtml(estado.franquia)}</span>` : ''}
           <span>${escapeHtml(estado.usuario)}</span>
           <button class="botao-linkado" onclick="app.abrirModalSenha()">Alterar senha</button>
           <button class="botao-linkado" onclick="app.sair()">Sair</button>
@@ -1329,6 +1375,9 @@ function viewTabela(infoAba){
 function localizarColunaResponsavel(colunas){
   return (colunas||[]).find(c => c.tipo==='select' && normalizarBusca(c.nome)==='responsavel');
 }
+function localizarColunaFranquia(colunas){
+  return (colunas||[]).find(c => c.tipo==='select' && normalizarBusca(c.nome)==='franquia');
+}
 
 function campoFormulario(coluna, valorAtual, indice, todasColunas, somenteLeitura){
   const id = 'campo_'+indice;
@@ -1364,14 +1413,21 @@ function viewModal(){
   const campos = infoAba.colunas.filter(c=>!c.ehId);
   const somenteAcao = !!id && estado.papel !== 'admin'; // operador editando um registro existente: só pode acrescentar ação (e alterar o Responsável)
   const colunaResponsavel = localizarColunaResponsavel(campos);
+  const colunaFranquia = localizarColunaFranquia(campos);
   return `
     <div class="sobreposicao" onclick="app.fecharModalSeClicarFora(event)">
       <div class="modal-caixa">
         <h3>${id ? 'Editar registro' : 'Novo registro'}</h3>
         <p class="subtitulo" style="margin-bottom:0">${escapeHtml(aba)}</p>
         ${somenteAcao ? `<div class="aviso-discreto" style="margin-top:12px">Como operador, você só pode acrescentar uma nova ação${colunaResponsavel?` e alterar o(a) ${escapeHtml(colunaResponsavel.nome)}`:''}. Os demais campos estão bloqueados — apenas o admin pode alterá-los.</div>` : ''}
+        ${(estado.franquia && colunaFranquia) ? `<div class="aviso-discreto" style="margin-top:12px">Você está vinculado à Franquia <strong>${escapeHtml(estado.franquia)}</strong> — esse campo fica travado nesse valor.</div>` : ''}
         <form onsubmit="app.salvarRegistro(event)">
-          ${campos.map((c,i)=>campoFormulario(c, registroAtual ? registroAtual[c.nome] : '', i, campos, somenteAcao && c.tipo!=='texto_longo' && c!==colunaResponsavel)).join('')}
+          ${campos.map((c,i)=>{
+            const travadoPorFranquia = !!(estado.franquia && colunaFranquia && c===colunaFranquia);
+            const desabilitar = (somenteAcao && c.tipo!=='texto_longo' && c!==colunaResponsavel) || travadoPorFranquia;
+            const valorAtual = registroAtual ? registroAtual[c.nome] : (travadoPorFranquia ? estado.franquia : '');
+            return campoFormulario(c, valorAtual, i, campos, desabilitar);
+          }).join('')}
           ${estado.enviando ? barraProgresso() : ''}
           <div class="acoes-modal">
             <button type="button" class="botao-secundario" onclick="app.fecharModal()" ${estado.enviando?'disabled':''}>Cancelar</button>
@@ -1409,7 +1465,7 @@ function viewModalSenha(){
    personalizados
    ========================================================================== */
 const CATEGORIAS_OPCOES = [
-  { chave:'Assunto', rotulo:'Assunto' },
+  { chave:'Franquia', rotulo:'Franquia' },
   { chave:'SubAssunto', rotulo:'SubAssunto' },
   { chave:'Situacao', rotulo:'Situação' },
   { chave:'Responsavel', rotulo:'Responsável' }
@@ -1520,7 +1576,7 @@ function viewConfiguracoes(){
         ${usuarios.length===0 ? '<p class="vazio-inline">Nenhum usuário encontrado.</p>' : usuarios.map(u=>`
           <div class="linha-campo-config">
             <span class="nome-campo-config">${escapeHtml(u.usuario)}</span>
-            <span class="tipo-campo-config"><span class="cracha cracha-${escapeHtml(u.papel)}">${escapeHtml(u.papel)}</span></span>
+            <span class="tipo-campo-config"><span class="cracha cracha-${escapeHtml(u.papel)}">${escapeHtml(u.papel)}</span> ${u.franquia ? `<span class="cracha">${escapeHtml(u.franquia)}</span>` : '<span class="vazio-inline" style="font-size:12px">Todas as Franquias</span>'}</span>
             <button type="button" class="botao-icone perigo" title="Excluir usuário" ${u.usuario===estado.usuario?'disabled':''} onclick="app.excluirUsuarioConfig('${escapeHtml(u.usuario)}')">🗑</button>
           </div>`).join('')}
       </div>
@@ -1567,6 +1623,7 @@ Alta"></textarea>
 }
 
 function viewModalNovoUsuario(){
+  const opcoesFranquia = (estado.configOpcoes && estado.configOpcoes['Franquia']) || [];
   return `
     <div class="sobreposicao" onclick="app.fecharModalSeClicarForaNovoUsuario(event)">
       <div class="modal-caixa">
@@ -1580,6 +1637,13 @@ function viewModalNovoUsuario(){
               <option value="admin">Admin</option>
             </select>
           </label>
+          <label>Franquia
+            <select id="franquiaNovoUsuario">
+              <option value="" selected>— Sem restrição (vê todas) —</option>
+              ${opcoesFranquia.map(op=>`<option value="${escapeHtml(op)}">${escapeHtml(op)}</option>`).join('')}
+            </select>
+          </label>
+          <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 0">Deixe em branco se o usuário deve ver e lançar registros de todas as Franquias.</p>
           ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
           ${estado.enviando ? barraProgresso() : ''}
           <div class="acoes-modal">
@@ -1606,18 +1670,19 @@ const app = {
     if(resp.ok){
       estado.usuario = resp.usuario;
       estado.papel = resp.papel;
+      estado.franquia = resp.franquia || null;
       estado.erroLogin = null;
       const respSchema = await apiCall('schema', {});
       estado.enviando = false;
       if(respSchema.ok){
         estado.schema = respSchema.abas;
         estado.abaAtiva = 'dashboard';
-        salvarSessao(estado.usuario, estado.papel);
+        salvarSessao(estado.usuario, estado.papel, estado.franquia);
         renderizar();
         app.atualizarDados();
       } else {
         estado.erroLogin = 'Não foi possível carregar a estrutura da planilha: ' + (respSchema.erro||'');
-        estado.usuario = null; estado.papel = null;
+        estado.usuario = null; estado.papel = null; estado.franquia = null;
         renderizar();
       }
     } else {
@@ -1678,11 +1743,11 @@ const app = {
     renderizar();
     try{
       if(estado.abaAtiva === 'dashboard'){
-        const resp = await apiCall('dashboard', {});
+        const resp = await apiCall('dashboard', { usuarioFranquia: estado.franquia });
         if(!resp.ok) throw new Error(resp.erro || 'Falha ao buscar indicadores.');
         estado.painel = resp.painel;
       } else {
-        const resp = await apiCall('listar', { aba: estado.abaAtiva });
+        const resp = await apiCall('listar', { aba: estado.abaAtiva, usuarioFranquia: estado.franquia });
         if(!resp.ok) throw new Error(resp.erro || 'Falha ao buscar dados.');
         estado.cache[estado.abaAtiva] = resp.registros;
       }
@@ -1767,8 +1832,8 @@ const app = {
     estado.enviando = true;
     renderizar();
     const resp = id
-      ? await apiCall('atualizar', { aba, id, registro })
-      : await apiCall('criar', { aba, registro });
+      ? await apiCall('atualizar', { aba, id, registro, usuarioFranquia: estado.franquia })
+      : await apiCall('criar', { aba, registro, usuarioFranquia: estado.franquia });
     estado.enviando = false;
     if(resp.ok){
       estado.modal = null;
@@ -1781,7 +1846,7 @@ const app = {
 
   async excluirRegistro(aba, id){
     if(!confirm('Tem certeza que deseja excluir este registro? Essa ação não pode ser desfeita.')) return;
-    const resp = await apiCall('excluir', { aba, id });
+    const resp = await apiCall('excluir', { aba, id, usuarioFranquia: estado.franquia });
     if(resp.ok){ app.atualizarDados(); }
     else { alert('Não foi possível excluir: ' + (resp.erro || 'erro desconhecido.')); }
   },
@@ -1956,9 +2021,10 @@ const app = {
     const usuario = document.getElementById('usuarioNovoUsuario').value.trim();
     const senha = document.getElementById('senhaNovoUsuario').value;
     const papel = document.getElementById('papelNovoUsuario').value;
+    const franquia = document.getElementById('franquiaNovoUsuario').value || null;
     estado.enviando = true;
     renderizar();
-    const resp = await apiCall('criarUsuario', { usuario, senha, papel });
+    const resp = await apiCall('criarUsuario', { usuario, senha, papel, franquia });
     estado.enviando = false;
     if(resp.ok){
       estado.modalNovoUsuario = null;
@@ -2133,6 +2199,7 @@ window.app = app;
   }
   estado.usuario = sessaoSalva.usuario;
   estado.papel = sessaoSalva.papel;
+  estado.franquia = sessaoSalva.franquia || null;
   estado.carregando = true;
   renderizar(); // mostra a tela do painel já "logada" enquanto os dados carregam
   const respSchema = await apiCall('schema', {});
