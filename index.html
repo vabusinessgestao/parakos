@@ -473,6 +473,34 @@ function demoExcluirCampo(d){
   return { ok:true };
 }
 
+// ---- Configurações (admin): gerenciar usuários ----
+function demoListarUsuarios(){
+  return { ok:true, usuarios: DEMO_DB.usuarios.map(u=>({ usuario:u.usuario, papel:u.papel })) };
+}
+function demoCriarUsuario(d){
+  const usuario = (d.usuario||'').trim();
+  const senha = d.senha||'';
+  const papel = (d.papel==='admin') ? 'admin' : 'operador';
+  if(!usuario) return { ok:false, erro:'Dê um nome de usuário.' };
+  if(senha.length < 4) return { ok:false, erro:'A senha precisa ter pelo menos 4 caracteres.' };
+  const jaExiste = DEMO_DB.usuarios.some(u=>u.usuario===usuario);
+  if(jaExiste) return { ok:false, erro:'Já existe um usuário com esse nome.' };
+  DEMO_DB.usuarios.push({ usuario, senha, papel });
+  return { ok:true, usuario:{ usuario, papel } };
+}
+function demoExcluirUsuario(d){
+  if(d.usuario === d.usuarioLogado) return { ok:false, erro:'Você não pode excluir o próprio usuário enquanto estiver logado com ele.' };
+  const idx = DEMO_DB.usuarios.findIndex(u=>u.usuario===d.usuario);
+  if(idx===-1) return { ok:false, erro:'Usuário não encontrado.' };
+  const alvo = DEMO_DB.usuarios[idx];
+  if(alvo.papel==='admin'){
+    const totalAdmins = DEMO_DB.usuarios.filter(u=>u.papel==='admin').length;
+    if(totalAdmins <= 1) return { ok:false, erro:'Não é possível excluir o último administrador do sistema.' };
+  }
+  DEMO_DB.usuarios.splice(idx,1);
+  return { ok:true };
+}
+
 /* ============================================================================
    CONEXÃO REAL COM O SUPABASE
    ========================================================================== */
@@ -646,6 +674,40 @@ async function supabaseExcluirCampo(d){
   return { ok:true };
 }
 
+// ---- Configurações (admin): gerenciar usuários ----
+async function supabaseListarUsuarios(){
+  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel').order('usuario');
+  if(error) return { ok:false, erro:'Falha ao carregar usuários: ' + error.message };
+  return { ok:true, usuarios:data };
+}
+async function supabaseCriarUsuario(d){
+  const usuario = (d.usuario||'').trim();
+  const senha = d.senha||'';
+  const papel = (d.papel==='admin') ? 'admin' : 'operador';
+  if(!usuario) return { ok:false, erro:'Dê um nome de usuário.' };
+  if(senha.length < 4) return { ok:false, erro:'A senha precisa ter pelo menos 4 caracteres.' };
+  const { data, error } = await clienteSupabase().from('usuarios').insert({ usuario, senha, papel }).select('usuario, papel').single();
+  if(error){
+    if(error.code === '23505') return { ok:false, erro:'Já existe um usuário com esse nome.' };
+    return { ok:false, erro:'Falha ao criar usuário: ' + error.message };
+  }
+  return { ok:true, usuario:data };
+}
+async function supabaseExcluirUsuario(d){
+  if(d.usuario === d.usuarioLogado) return { ok:false, erro:'Você não pode excluir o próprio usuário enquanto estiver logado com ele.' };
+  const { data: alvo, error: erroAlvo } = await clienteSupabase().from('usuarios').select('papel').eq('usuario', d.usuario).maybeSingle();
+  if(erroAlvo) return { ok:false, erro:'Falha ao excluir usuário: ' + erroAlvo.message };
+  if(!alvo) return { ok:false, erro:'Usuário não encontrado.' };
+  if(alvo.papel==='admin'){
+    const { count, error: erroContagem } = await clienteSupabase().from('usuarios').select('*', { count:'exact', head:true }).eq('papel','admin');
+    if(erroContagem) return { ok:false, erro:'Falha ao verificar administradores: ' + erroContagem.message };
+    if((count||0) <= 1) return { ok:false, erro:'Não é possível excluir o último administrador do sistema.' };
+  }
+  const { error } = await clienteSupabase().from('usuarios').delete().eq('usuario', d.usuario);
+  if(error) return { ok:false, erro:'Falha ao excluir usuário: ' + error.message };
+  return { ok:true };
+}
+
 /* ============================================================================
    CHAMADA ÚNICA DE API — usa o Supabase real se CONFIG.SUPABASE_URL estiver
    preenchida, ou os dados de demonstração acima se estiver vazia.
@@ -676,6 +738,9 @@ function apiCall(action, data){
           case 'listarCampos': resultado = demoListarCampos(); break;
           case 'criarCampo': resultado = demoCriarCampo(data); break;
           case 'excluirCampo': resultado = demoExcluirCampo(data); break;
+          case 'listarUsuarios': resultado = demoListarUsuarios(); break;
+          case 'criarUsuario': resultado = demoCriarUsuario(data); break;
+          case 'excluirUsuario': resultado = demoExcluirUsuario(data); break;
           default: resultado = { ok:false, erro:'Ação desconhecida.' };
         }
         resolve(resultado);
@@ -697,6 +762,9 @@ function apiCall(action, data){
     case 'listarCampos': return comTratativaDeErro(()=>supabaseListarCampos());
     case 'criarCampo': return comTratativaDeErro(()=>supabaseCriarCampo(data));
     case 'excluirCampo': return comTratativaDeErro(()=>supabaseExcluirCampo(data));
+    case 'listarUsuarios': return comTratativaDeErro(()=>supabaseListarUsuarios());
+    case 'criarUsuario': return comTratativaDeErro(()=>supabaseCriarUsuario(data));
+    case 'excluirUsuario': return comTratativaDeErro(()=>supabaseExcluirUsuario(data));
     default: return Promise.resolve({ ok:false, erro:'Ação desconhecida.' });
   }
 }
@@ -720,9 +788,11 @@ function estadoInicial(){
     configCategoria:'Assunto',
     configOpcoes:null,
     configCampos:null,
+    configUsuarios:null,
     configNovaOpcao:'',
     configErro:null,
-    modalNovoCampo:null
+    modalNovoCampo:null,
+    modalNovoUsuario:null
   };
 }
 let estado = estadoInicial();
@@ -831,6 +901,7 @@ function viewShell(){
       ${estado.modal ? viewModal() : ''}
       ${estado.modalSenha ? viewModalSenha() : ''}
       ${estado.modalNovoCampo ? viewModalNovoCampo() : ''}
+      ${estado.modalNovoUsuario ? viewModalNovoUsuario() : ''}
     </div>`;
 }
 
@@ -1164,6 +1235,7 @@ function viewConfiguracoes(){
   const categoriaAtual = estado.configCategoria;
   const listaAtual = opcoes[categoriaAtual] || [];
   const campos = estado.configCampos || [];
+  const usuarios = estado.configUsuarios || [];
 
   return `
     <div class="cabecalho-conteudo">
@@ -1203,6 +1275,20 @@ function viewConfiguracoes(){
       </div>
       <button type="button" class="botao-primario" style="margin-top:12px" onclick="app.abrirNovoCampo()">+ Novo campo</button>
     </div>
+
+    <div class="cartao-config">
+      <h3>Usuários</h3>
+      <p class="subtitulo" style="margin:0 0 14px">Crie acessos para novas pessoas usarem o painel, com papel de admin ou operador.</p>
+      <div class="lista-campos-config">
+        ${usuarios.length===0 ? '<p class="vazio-inline">Nenhum usuário encontrado.</p>' : usuarios.map(u=>`
+          <div class="linha-campo-config">
+            <span class="nome-campo-config">${escapeHtml(u.usuario)}</span>
+            <span class="tipo-campo-config"><span class="cracha cracha-${escapeHtml(u.papel)}">${escapeHtml(u.papel)}</span></span>
+            <button type="button" class="botao-icone perigo" title="Excluir usuário" ${u.usuario===estado.usuario?'disabled':''} onclick="app.excluirUsuarioConfig('${escapeHtml(u.usuario)}')">🗑</button>
+          </div>`).join('')}
+      </div>
+      <button type="button" class="botao-primario" style="margin-top:12px" onclick="app.abrirNovoUsuario()">+ Novo usuário</button>
+    </div>
   `;
 }
 
@@ -1237,6 +1323,31 @@ Alta"></textarea>
           <div class="acoes-modal">
             <button type="button" class="botao-secundario" onclick="app.fecharNovoCampo()" ${estado.enviando?'disabled':''}>Cancelar</button>
             <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Criar campo'}</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+}
+
+function viewModalNovoUsuario(){
+  return `
+    <div class="sobreposicao" onclick="app.fecharModalSeClicarForaNovoUsuario(event)">
+      <div class="modal-caixa">
+        <h3>Novo usuário</h3>
+        <form onsubmit="app.salvarNovoUsuario(event)">
+          <label>Usuário<input type="text" id="usuarioNovoUsuario" autocomplete="off" required></label>
+          <label>Senha<input type="password" id="senhaNovoUsuario" autocomplete="new-password" minlength="4" required></label>
+          <label>Papel
+            <select id="papelNovoUsuario">
+              <option value="operador" selected>Operador</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+          ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
+          ${estado.enviando ? barraProgresso() : ''}
+          <div class="acoes-modal">
+            <button type="button" class="botao-secundario" onclick="app.fecharNovoUsuario()" ${estado.enviando?'disabled':''}>Cancelar</button>
+            <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Criar usuário'}</button>
           </div>
         </form>
       </div>
@@ -1484,11 +1595,12 @@ const app = {
     renderizar();
     estado.carregando = true;
     renderizar();
-    const [respOpcoes, respCampos] = await Promise.all([apiCall('listarOpcoes', {}), apiCall('listarCampos', {})]);
+    const [respOpcoes, respCampos, respUsuarios] = await Promise.all([apiCall('listarOpcoes', {}), apiCall('listarCampos', {}), apiCall('listarUsuarios', {})]);
     estado.carregando = false;
     if(respOpcoes.ok) estado.configOpcoes = respOpcoes.porCategoria;
     if(respCampos.ok) estado.configCampos = respCampos.campos;
-    if(!respOpcoes.ok || !respCampos.ok) estado.configErro = respOpcoes.erro || respCampos.erro;
+    if(respUsuarios.ok) estado.configUsuarios = respUsuarios.usuarios;
+    if(!respOpcoes.ok || !respCampos.ok || !respUsuarios.ok) estado.configErro = respOpcoes.erro || respCampos.erro || respUsuarios.erro;
     renderizar();
   },
 
@@ -1583,6 +1695,56 @@ const app = {
       if(respSchema.ok) estado.schema = respSchema.abas;
     } else {
       estado.configErro = resp.erro || 'Não foi possível excluir o campo.';
+    }
+    renderizar();
+  },
+
+  abrirNovoUsuario(){
+    estado.modalNovoUsuario = true;
+    estado.configErro = null;
+    renderizar();
+  },
+  fecharNovoUsuario(){
+    estado.modalNovoUsuario = null;
+    renderizar();
+  },
+  fecharModalSeClicarForaNovoUsuario(e){
+    if(e.target.classList.contains('sobreposicao')) app.fecharNovoUsuario();
+  },
+  async salvarNovoUsuario(e){
+    e.preventDefault();
+    const usuario = document.getElementById('usuarioNovoUsuario').value.trim();
+    const senha = document.getElementById('senhaNovoUsuario').value;
+    const papel = document.getElementById('papelNovoUsuario').value;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('criarUsuario', { usuario, senha, papel });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.modalNovoUsuario = null;
+      estado.configErro = null;
+      estado.configUsuarios = [...(estado.configUsuarios||[]), resp.usuario].sort((a,b)=>a.usuario.localeCompare(b.usuario,'pt-BR'));
+      renderizar();
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível criar o usuário.';
+      renderizar();
+    }
+  },
+  async excluirUsuarioConfig(usuario){
+    if(usuario === estado.usuario){
+      alert('Você não pode excluir o próprio usuário enquanto estiver logado com ele.');
+      return;
+    }
+    if(!confirm(`Excluir o usuário "${usuario}"? Essa ação não pode ser desfeita.`)) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('excluirUsuario', { usuario, usuarioLogado: estado.usuario });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.configUsuarios = (estado.configUsuarios||[]).filter(u=>u.usuario!==usuario);
+      estado.configErro = null;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível excluir o usuário.';
     }
     renderizar();
   }
