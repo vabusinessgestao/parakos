@@ -259,7 +259,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.1.0',
+  VERSAO: 'v1.2.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -536,6 +536,22 @@ function demoExcluirUsuario(d){
   DEMO_DB.usuarios.splice(idx,1);
   return { ok:true };
 }
+function demoEditarUsuario(d){
+  const usuario = DEMO_DB.usuarios.find(u=>u.usuario===d.usuario);
+  if(!usuario) return { ok:false, erro:'Usuário não encontrado.' };
+  const papel = (d.papel==='admin') ? 'admin' : 'operador';
+  if(usuario.papel==='admin' && papel!=='admin'){
+    const totalAdmins = DEMO_DB.usuarios.filter(u=>u.papel==='admin').length;
+    if(totalAdmins <= 1) return { ok:false, erro:'Não é possível remover o papel de administrador do último admin do sistema.' };
+  }
+  if(d.novaSenha){
+    if(String(d.novaSenha).length < 4) return { ok:false, erro:'A nova senha precisa ter pelo menos 4 caracteres.' };
+    usuario.senha = d.novaSenha;
+  }
+  usuario.papel = papel;
+  usuario.franquia = d.franquia || null;
+  return { ok:true, usuario:{ usuario:usuario.usuario, papel:usuario.papel, franquia:usuario.franquia } };
+}
 
 // ---- Configurações (admin): identidade visual (logomarca + cores) ----
 function demoConfigSistema(){
@@ -794,6 +810,25 @@ async function supabaseExcluirUsuario(d){
   if(error) return { ok:false, erro:'Falha ao excluir usuário: ' + error.message };
   return { ok:true };
 }
+async function supabaseEditarUsuario(d){
+  const papel = (d.papel==='admin') ? 'admin' : 'operador';
+  const { data: atual, error: erroAtual } = await clienteSupabase().from('usuarios').select('papel').eq('usuario', d.usuario).maybeSingle();
+  if(erroAtual) return { ok:false, erro:'Falha ao editar usuário: ' + erroAtual.message };
+  if(!atual) return { ok:false, erro:'Usuário não encontrado.' };
+  if(atual.papel==='admin' && papel!=='admin'){
+    const { count, error: erroContagem } = await clienteSupabase().from('usuarios').select('*', { count:'exact', head:true }).eq('papel','admin');
+    if(erroContagem) return { ok:false, erro:'Falha ao verificar administradores: ' + erroContagem.message };
+    if((count||0) <= 1) return { ok:false, erro:'Não é possível remover o papel de administrador do último admin do sistema.' };
+  }
+  const atualizacao = { papel, franquia: d.franquia || null };
+  if(d.novaSenha){
+    if(String(d.novaSenha).length < 4) return { ok:false, erro:'A nova senha precisa ter pelo menos 4 caracteres.' };
+    atualizacao.senha = d.novaSenha;
+  }
+  const { data, error } = await clienteSupabase().from('usuarios').update(atualizacao).eq('usuario', d.usuario).select('usuario, papel, franquia').single();
+  if(error) return { ok:false, erro:'Falha ao editar usuário: ' + error.message };
+  return { ok:true, usuario:data };
+}
 
 // ---- Configurações (admin): identidade visual (logomarca + cores) ----
 async function supabaseConfigSistema(){
@@ -866,6 +901,7 @@ function apiCall(action, data){
           case 'listarUsuarios': resultado = demoListarUsuarios(); break;
           case 'criarUsuario': resultado = demoCriarUsuario(data); break;
           case 'excluirUsuario': resultado = demoExcluirUsuario(data); break;
+          case 'editarUsuario': resultado = demoEditarUsuario(data); break;
           case 'configSistema': resultado = demoConfigSistema(); break;
           case 'salvarLogomarca': resultado = demoSalvarLogomarca(data); break;
           case 'removerLogomarca': resultado = demoRemoverLogomarca(); break;
@@ -895,6 +931,7 @@ function apiCall(action, data){
     case 'listarUsuarios': return comTratativaDeErro(()=>supabaseListarUsuarios());
     case 'criarUsuario': return comTratativaDeErro(()=>supabaseCriarUsuario(data));
     case 'excluirUsuario': return comTratativaDeErro(()=>supabaseExcluirUsuario(data));
+    case 'editarUsuario': return comTratativaDeErro(()=>supabaseEditarUsuario(data));
     case 'configSistema': return comTratativaDeErro(()=>supabaseConfigSistema());
     case 'salvarLogomarca': return comTratativaDeErro(()=>supabaseSalvarLogomarca(data));
     case 'removerLogomarca': return comTratativaDeErro(()=>supabaseRemoverLogomarca());
@@ -928,6 +965,7 @@ function estadoInicial(){
     configErro:null,
     modalNovoCampo:null,
     modalNovoUsuario:null,
+    modalEditarUsuario:null,
     logomarca:null,
     coresTema:null,
     configLogoPreview:null,
@@ -1133,6 +1171,7 @@ function viewShell(){
       ${estado.modalSenha ? viewModalSenha() : ''}
       ${estado.modalNovoCampo ? viewModalNovoCampo() : ''}
       ${estado.modalNovoUsuario ? viewModalNovoUsuario() : ''}
+      ${estado.modalEditarUsuario ? viewModalEditarUsuario() : ''}
     </div>`;
 }
 
@@ -1577,6 +1616,7 @@ function viewConfiguracoes(){
           <div class="linha-campo-config">
             <span class="nome-campo-config">${escapeHtml(u.usuario)}</span>
             <span class="tipo-campo-config"><span class="cracha cracha-${escapeHtml(u.papel)}">${escapeHtml(u.papel)}</span> ${u.franquia ? `<span class="cracha">${escapeHtml(u.franquia)}</span>` : '<span class="vazio-inline" style="font-size:12px">Todas as Franquias</span>'}</span>
+            <button type="button" class="botao-icone" title="Editar usuário" onclick="app.abrirEditarUsuario('${escapeHtml(u.usuario)}')">✎</button>
             <button type="button" class="botao-icone perigo" title="Excluir usuário" ${u.usuario===estado.usuario?'disabled':''} onclick="app.excluirUsuarioConfig('${escapeHtml(u.usuario)}')">🗑</button>
           </div>`).join('')}
       </div>
@@ -1649,6 +1689,39 @@ function viewModalNovoUsuario(){
           <div class="acoes-modal">
             <button type="button" class="botao-secundario" onclick="app.fecharNovoUsuario()" ${estado.enviando?'disabled':''}>Cancelar</button>
             <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Criar usuário'}</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+}
+
+function viewModalEditarUsuario(){
+  const { usuario, papel, franquia } = estado.modalEditarUsuario;
+  const opcoesFranquia = (estado.configOpcoes && estado.configOpcoes['Franquia']) || [];
+  return `
+    <div class="sobreposicao" onclick="app.fecharModalSeClicarForaEditarUsuario(event)">
+      <div class="modal-caixa">
+        <h3>Editar usuário</h3>
+        <p class="subtitulo" style="margin-bottom:0">${escapeHtml(usuario)}</p>
+        <form onsubmit="app.salvarEdicaoUsuario(event)">
+          <label>Nova senha (opcional)<input type="password" id="senhaEditarUsuario" autocomplete="new-password" minlength="4" placeholder="Deixe em branco para manter a senha atual"></label>
+          <label>Papel
+            <select id="papelEditarUsuario">
+              <option value="operador" ${papel==='operador'?'selected':''}>Operador</option>
+              <option value="admin" ${papel==='admin'?'selected':''}>Admin</option>
+            </select>
+          </label>
+          <label>Franquia
+            <select id="franquiaEditarUsuario">
+              <option value="" ${!franquia?'selected':''}>— Sem restrição (vê todas) —</option>
+              ${opcoesFranquia.map(op=>`<option value="${escapeHtml(op)}" ${op===franquia?'selected':''}>${escapeHtml(op)}</option>`).join('')}
+            </select>
+          </label>
+          ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
+          ${estado.enviando ? barraProgresso() : ''}
+          <div class="acoes-modal">
+            <button type="button" class="botao-secundario" onclick="app.fecharEditarUsuario()" ${estado.enviando?'disabled':''}>Cancelar</button>
+            <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Salvar alterações'}</button>
           </div>
         </form>
       </div>
@@ -2051,6 +2124,49 @@ const app = {
       estado.configErro = null;
     } else {
       estado.configErro = resp.erro || 'Não foi possível excluir o usuário.';
+    }
+    renderizar();
+  },
+
+  abrirEditarUsuario(usuario){
+    const u = (estado.configUsuarios||[]).find(x=>x.usuario===usuario);
+    if(!u) return;
+    estado.modalEditarUsuario = { usuario:u.usuario, papel:u.papel, franquia:u.franquia||null };
+    estado.configErro = null;
+    renderizar();
+  },
+  fecharEditarUsuario(){
+    estado.modalEditarUsuario = null;
+    renderizar();
+  },
+  fecharModalSeClicarForaEditarUsuario(e){
+    if(e.target.classList.contains('sobreposicao')) app.fecharEditarUsuario();
+  },
+  async salvarEdicaoUsuario(e){
+    e.preventDefault();
+    const usuario = estado.modalEditarUsuario.usuario;
+    const papel = document.getElementById('papelEditarUsuario').value;
+    const franquia = document.getElementById('franquiaEditarUsuario').value || null;
+    const novaSenha = document.getElementById('senhaEditarUsuario').value;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('editarUsuario', { usuario, papel, franquia, novaSenha: novaSenha || undefined });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.modalEditarUsuario = null;
+      estado.configErro = null;
+      estado.configUsuarios = (estado.configUsuarios||[]).map(u=>u.usuario===usuario ? resp.usuario : u);
+      if(usuario === estado.usuario){
+        // se o admin editou o próprio usuário, mantém a sessão coerente com o novo papel/franquia
+        estado.papel = resp.usuario.papel;
+        estado.franquia = resp.usuario.franquia;
+        salvarSessao(estado.usuario, estado.papel, estado.franquia);
+        renderizar();
+        app.atualizarDados(); // recarrega dashboard/tabela já filtrados pela nova franquia
+        return;
+      }
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível editar o usuário.';
     }
     renderizar();
   },
