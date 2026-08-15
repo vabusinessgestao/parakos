@@ -260,7 +260,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.3.0',
+  VERSAO: 'v1.3.1',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -535,6 +535,13 @@ const PAPEIS_VALIDOS = ['admin','gerente','colaborador'];
 function normalizarPapel(papel){
   return PAPEIS_VALIDOS.includes(papel) ? papel : 'colaborador';
 }
+// um Gerente só se restringe pela Franquia (não tem a restrição extra de
+// Responsável que o Colaborador tem) — sem Franquia definida, ele veria
+// TUDO de TODAS as Franquias. Por isso isso é obrigatório, sempre.
+function validarFranquiaObrigatoriaParaGerente(papel, franquia){
+  if(papel==='gerente' && !franquia) return 'Um Gerente precisa estar vinculado a uma Franquia — sem isso, ele veria os acompanhamentos de todas.';
+  return null;
+}
 // valida o que um "ator" (quem está fazendo a operação) tem permissão de fazer
 // com usuários: admin não tem restrição; gerente só mexe em colaboradores da
 // própria Franquia (não pode criar/editar/mover para outro papel ou Franquia)
@@ -554,6 +561,8 @@ function demoCriarUsuario(d){
   const franquia = d.franquia || null;
   if(!usuario) return { ok:false, erro:'Dê um nome de usuário.' };
   if(senha.length < 4) return { ok:false, erro:'A senha precisa ter pelo menos 4 caracteres.' };
+  const erroFranquia = validarFranquiaObrigatoriaParaGerente(papel, franquia);
+  if(erroFranquia) return { ok:false, erro:erroFranquia };
   const erroEscopo = validarEscopoGerenteParaUsuario(Object.assign({}, d, { papel, franquia }));
   if(erroEscopo) return { ok:false, erro:erroEscopo };
   const jaExiste = DEMO_DB.usuarios.some(u=>u.usuario===usuario);
@@ -581,6 +590,8 @@ function demoEditarUsuario(d){
   if(!usuario) return { ok:false, erro:'Usuário não encontrado.' };
   const papel = normalizarPapel(d.papel);
   const franquia = d.franquia || null;
+  const erroFranquia = validarFranquiaObrigatoriaParaGerente(papel, franquia);
+  if(erroFranquia) return { ok:false, erro:erroFranquia };
   const erroEscopo = validarEscopoGerenteParaUsuario(Object.assign({}, d, { papel, franquia }), usuario.papel, usuario.franquia);
   if(erroEscopo) return { ok:false, erro:erroEscopo };
   if(usuario.papel==='admin' && papel!=='admin'){
@@ -851,6 +862,8 @@ async function supabaseCriarUsuario(d){
   const franquia = d.franquia || null;
   if(!usuario) return { ok:false, erro:'Dê um nome de usuário.' };
   if(senha.length < 4) return { ok:false, erro:'A senha precisa ter pelo menos 4 caracteres.' };
+  const erroFranquia = validarFranquiaObrigatoriaParaGerente(papel, franquia);
+  if(erroFranquia) return { ok:false, erro:erroFranquia };
   const erroEscopo = validarEscopoGerenteParaUsuario(Object.assign({}, d, { papel, franquia }));
   if(erroEscopo) return { ok:false, erro:erroEscopo };
   const { data, error } = await clienteSupabase().from('usuarios').insert({ usuario, senha, papel, franquia }).select('usuario, papel, franquia').single();
@@ -883,6 +896,8 @@ async function supabaseEditarUsuario(d){
   const { data: atual, error: erroAtual } = await clienteSupabase().from('usuarios').select('papel, franquia').eq('usuario', d.usuario).maybeSingle();
   if(erroAtual) return { ok:false, erro:'Falha ao editar usuário: ' + erroAtual.message };
   if(!atual) return { ok:false, erro:'Usuário não encontrado.' };
+  const erroFranquia = validarFranquiaObrigatoriaParaGerente(papel, franquia);
+  if(erroFranquia) return { ok:false, erro:erroFranquia };
   const erroEscopo = validarEscopoGerenteParaUsuario(Object.assign({}, d, { papel, franquia }), atual.papel, atual.franquia);
   if(erroEscopo) return { ok:false, erro:erroEscopo };
   if(atual.papel==='admin' && papel!=='admin'){
@@ -1772,7 +1787,7 @@ function viewModalNovoUsuario(){
           <label>Usuário<input type="text" id="usuarioNovoUsuario" autocomplete="off" required></label>
           <label>Senha<input type="password" id="senhaNovoUsuario" autocomplete="new-password" minlength="4" required></label>
           <label>Papel
-            <select id="papelNovoUsuario" ${ehGerente?'disabled':''}>
+            <select id="papelNovoUsuario" ${ehGerente?'disabled':''} onchange="app.aoTrocarPapelNoFormularioUsuario(this.value, 'franquiaNovoUsuario')">
               <option value="colaborador" selected>Colaborador</option>
               ${!ehGerente ? `<option value="gerente">Gerente</option><option value="admin">Admin</option>` : ''}
             </select>
@@ -1785,7 +1800,7 @@ function viewModalNovoUsuario(){
           </label>
           ${ehGerente
             ? `<p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 0">Como gerente, você só pode criar Colaboradores da sua própria Franquia (${escapeHtml(estado.franquia||'')}).</p>`
-            : `<p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 0">Deixe a Franquia em branco se o usuário deve ver e lançar registros de todas as Franquias.</p>`}
+            : `<p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 0">Deixe a Franquia em branco se o usuário deve ver e lançar registros de todas as Franquias. Se o papel escolhido for Gerente, a Franquia passa a ser obrigatória.</p>`}
           ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
           ${estado.enviando ? barraProgresso() : ''}
           <div class="acoes-modal">
@@ -1809,7 +1824,7 @@ function viewModalEditarUsuario(){
         <form onsubmit="app.salvarEdicaoUsuario(event)">
           <label>Nova senha (opcional)<input type="password" id="senhaEditarUsuario" autocomplete="new-password" minlength="4" placeholder="Deixe em branco para manter a senha atual"></label>
           <label>Papel
-            <select id="papelEditarUsuario" ${ehGerente?'disabled':''}>
+            <select id="papelEditarUsuario" ${ehGerente?'disabled':''} onchange="app.aoTrocarPapelNoFormularioUsuario(this.value, 'franquiaEditarUsuario')">
               <option value="colaborador" ${papel==='colaborador'?'selected':''}>Colaborador</option>
               ${!ehGerente ? `<option value="gerente" ${papel==='gerente'?'selected':''}>Gerente</option><option value="admin" ${papel==='admin'?'selected':''}>Admin</option>` : ''}
             </select>
@@ -2004,6 +2019,23 @@ const app = {
     const opcoes = opcoesResponsavelParaFranquia(novaFranquia);
     selectResponsavel.innerHTML = '<option value="">— selecione —</option>' +
       opcoes.map(op=>`<option value="${escapeHtml(op)}" ${op===valorAtualResp?'selected':''}>${escapeHtml(op)}</option>`).join('');
+  },
+
+  // no formulário de criar/editar USUÁRIO: quando o papel escolhido é Gerente,
+  // remove a opção "sem restrição" da Franquia — Gerente é sempre restrito
+  aoTrocarPapelNoFormularioUsuario(novoPapel, idSelectFranquia){
+    const selectFranquia = document.getElementById(idSelectFranquia);
+    if(!selectFranquia) return;
+    const opcaoSemRestricao = selectFranquia.querySelector('option[value=""]');
+    if(novoPapel === 'gerente'){
+      if(opcaoSemRestricao) opcaoSemRestricao.disabled = true;
+      if(!selectFranquia.value){
+        const primeiraValida = selectFranquia.querySelector('option[value]:not([value=""])');
+        if(primeiraValida) selectFranquia.value = primeiraValida.value;
+      }
+    } else if(opcaoSemRestricao){
+      opcaoSemRestricao.disabled = false;
+    }
   },
 
   async salvarRegistro(e){
@@ -2210,6 +2242,11 @@ const app = {
     const senha = document.getElementById('senhaNovoUsuario').value;
     const papel = document.getElementById('papelNovoUsuario').value;
     const franquia = document.getElementById('franquiaNovoUsuario').value || null;
+    if(papel==='gerente' && !franquia){
+      estado.configErro = 'Um Gerente precisa estar vinculado a uma Franquia — sem isso, ele veria os acompanhamentos de todas.';
+      renderizar();
+      return;
+    }
     estado.enviando = true;
     renderizar();
     const resp = await apiCall('criarUsuario', { usuario, senha, papel, franquia, atorPapel: estado.papel, atorFranquia: estado.franquia });
@@ -2269,6 +2306,11 @@ const app = {
     const papel = document.getElementById('papelEditarUsuario').value;
     const franquia = document.getElementById('franquiaEditarUsuario').value || null;
     const novaSenha = document.getElementById('senhaEditarUsuario').value;
+    if(papel==='gerente' && !franquia){
+      estado.configErro = 'Um Gerente precisa estar vinculado a uma Franquia — sem isso, ele veria os acompanhamentos de todas.';
+      renderizar();
+      return;
+    }
     estado.enviando = true;
     renderizar();
     const resp = await apiCall('editarUsuario', { usuario, papel, franquia, novaSenha: novaSenha || undefined, atorPapel: estado.papel, atorFranquia: estado.franquia });
