@@ -260,7 +260,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.3.1',
+  VERSAO: 'v1.3.2',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -379,6 +379,14 @@ function demoEsquema(){
 function demoLogin(d){
   const usuario = DEMO_DB.usuarios.find(u=>String(u.usuario)===String(d.usuario) && String(u.senha)===String(d.senha));
   return usuario ? { ok:true, usuario:usuario.usuario, papel:usuario.papel||'colaborador', franquia:usuario.franquia||null } : { ok:false, erro:'Usuário ou senha inválidos.' };
+}
+// usado ao restaurar a sessão (F5): reconfere papel/franquia direto no banco,
+// em vez de confiar no que ficou guardado no navegador — se um admin/gerente
+// mudar o papel ou a Franquia de alguém, a sessão já aberta dessa pessoa
+// precisa refletir isso no próximo carregamento da página, não só no próximo login
+function demoObterUsuario(d){
+  const usuario = DEMO_DB.usuarios.find(u=>String(u.usuario)===String(d.usuario));
+  return usuario ? { ok:true, papel:usuario.papel||'colaborador', franquia:usuario.franquia||null } : { ok:false, erro:'Usuário não encontrado.' };
 }
 function demoListar(d){
   d = d || {};
@@ -671,6 +679,14 @@ async function supabaseLogin(d){
   if(error) return { ok:false, erro:'Falha de conexão com o banco: ' + error.message };
   if(!data) return { ok:false, erro:'Usuário ou senha inválidos.' };
   return { ok:true, usuario:data.usuario, papel:data.papel||'colaborador', franquia:data.franquia||null };
+}
+// usado ao restaurar a sessão (F5): reconfere papel/franquia direto no banco,
+// em vez de confiar no que ficou guardado no navegador
+async function supabaseObterUsuario(d){
+  const { data, error } = await clienteSupabase().from('usuarios').select('papel, franquia').eq('usuario', d.usuario).maybeSingle();
+  if(error) return { ok:false, erro:'Falha de conexão com o banco: ' + error.message };
+  if(!data) return { ok:false, erro:'Usuário não encontrado.' };
+  return { ok:true, papel:data.papel||'colaborador', franquia:data.franquia||null };
 }
 async function supabaseListar(d){
   d = d || {};
@@ -970,6 +986,7 @@ function apiCall(action, data){
         let resultado;
         switch(action){
           case 'login': resultado = demoLogin(data); break;
+          case 'obterUsuario': resultado = demoObterUsuario(data); break;
           case 'schema': resultado = demoEsquema(); break;
           case 'listar': resultado = demoListar(); break;
           case 'criar': resultado = demoCriar(data); break;
@@ -1001,6 +1018,7 @@ function apiCall(action, data){
   }
   switch(action){
     case 'login': return comTratativaDeErro(()=>supabaseLogin(data));
+    case 'obterUsuario': return comTratativaDeErro(()=>supabaseObterUsuario(data));
     case 'schema': return comTratativaDeErro(()=>supabaseEsquema());
     case 'listar': return comTratativaDeErro(()=>supabaseListar());
     case 'criar': return comTratativaDeErro(()=>supabaseCriar(data));
@@ -2482,6 +2500,19 @@ window.app = app;
   estado.franquia = sessaoSalva.franquia || null;
   estado.carregando = true;
   renderizar(); // mostra a tela do painel já "logada" enquanto os dados carregam
+
+  // reconfere papel/franquia direto no banco (não confia só no que ficou salvo
+  // no navegador) — se um admin/gerente mudou isso enquanto a sessão já estava
+  // aberta, essa é a hora de pegar o valor certo, antes de buscar qualquer dado
+  const respUsuario = await apiCall('obterUsuario', { usuario: estado.usuario });
+  if(respUsuario.ok){
+    estado.papel = respUsuario.papel;
+    estado.franquia = respUsuario.franquia;
+    salvarSessao(estado.usuario, estado.papel, estado.franquia);
+  }
+  // se falhar (banco fora do ar etc.), segue com o valor salvo localmente
+  // em vez de travar o usuário fora do sistema por uma falha de rede
+
   const [respSchema, respFuncionarios] = await Promise.all([apiCall('schema', {}), apiCall('listarFuncionarios', {})]);
   estado.carregando = false;
   if(respSchema.ok){
