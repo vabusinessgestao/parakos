@@ -205,10 +205,11 @@
   .tabela-ledger td.vazio{ text-align:center; color:var(--ink-soft); padding:26px; }
   .vazio-inline{ color:#B7AF98; }
   .texto-longo-celula{ white-space:pre-wrap; display:inline-block; max-width:100%; line-height:1.45; }
-  .lista-acoes{ display:flex; flex-direction:column; gap:5px; max-width:100%; }
-  .linha-acao{ display:flex; gap:7px; align-items:flex-start; line-height:1.45; }
-  .carimbo-data-acao{ flex:0 0 auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-soft); white-space:nowrap; padding-top:1px; }
-  .texto-acao{ flex:1 1 auto; min-width:0; }
+  .lista-acoes{ display:flex; flex-direction:column; gap:8px; max-width:100%; }
+  .bloco-acao{ border-left:4px solid var(--rule); background:rgba(0,0,0,0.015); border-radius:0 6px 6px 0; padding:6px 10px; line-height:1.45; }
+  .data-bloco-acao{ font-size:11px; color:var(--ink-soft); margin-bottom:2px; }
+  .texto-bloco-acao{ white-space:pre-wrap; }
+  .meta-bloco-acao{ font-size:11.5px; color:var(--ink-soft); margin-top:4px; font-style:italic; }
   .link-ver-mais{ display:block; background:none; border:none; color:var(--accent-deep); font-size:12px; font-weight:600; text-decoration:underline; padding:4px 0 0; cursor:pointer; }
   .link-ver-mais:hover{ color:var(--accent); }
   .celula-acoes{ white-space:nowrap; text-align:right; }
@@ -260,7 +261,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.3.2',
+  VERSAO: 'v1.4.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -482,7 +483,7 @@ function demoDashboard(d){
       if(!porSubAssunto[v]) porSubAssunto[v]={registros:0,acoes:0};
       porSubAssunto[v].registros+=1;
       const h=r[colunaHistorico.nome];
-      if(h) porSubAssunto[v].acoes += String(h).split('\n').filter(l=>l.trim()!=='').length;
+      if(h) porSubAssunto[v].acoes += parseBlocosAcao(h).length;
     });
   }
   return { ok:true, painel:{ Acompanhamento: { total: registros.length, distribuicoes, porSubAssunto } } };
@@ -807,7 +808,7 @@ async function supabaseDashboard(d){
       if(!porSubAssunto[v]) porSubAssunto[v]={registros:0,acoes:0};
       porSubAssunto[v].registros+=1;
       const h=r[colunaHistorico.nome];
-      if(h) porSubAssunto[v].acoes += String(h).split('\n').filter(l=>l.trim()!=='').length;
+      if(h) porSubAssunto[v].acoes += parseBlocosAcao(h).length;
     });
   }
   return { ok:true, painel:{ Acompanhamento: { total: registros.length, distribuicoes, porSubAssunto } } };
@@ -988,11 +989,11 @@ function apiCall(action, data){
           case 'login': resultado = demoLogin(data); break;
           case 'obterUsuario': resultado = demoObterUsuario(data); break;
           case 'schema': resultado = demoEsquema(); break;
-          case 'listar': resultado = demoListar(); break;
+          case 'listar': resultado = demoListar(data); break;
           case 'criar': resultado = demoCriar(data); break;
           case 'atualizar': resultado = demoAtualizar(data); break;
           case 'excluir': resultado = demoExcluir(data); break;
-          case 'dashboard': resultado = demoDashboard(); break;
+          case 'dashboard': resultado = demoDashboard(data); break;
           case 'trocarSenha': resultado = demoTrocarSenha(data); break;
           case 'listarOpcoes': resultado = demoListarOpcoes(); break;
           case 'adicionarOpcao': resultado = demoAdicionarOpcao(data); break;
@@ -1020,11 +1021,11 @@ function apiCall(action, data){
     case 'login': return comTratativaDeErro(()=>supabaseLogin(data));
     case 'obterUsuario': return comTratativaDeErro(()=>supabaseObterUsuario(data));
     case 'schema': return comTratativaDeErro(()=>supabaseEsquema());
-    case 'listar': return comTratativaDeErro(()=>supabaseListar());
+    case 'listar': return comTratativaDeErro(()=>supabaseListar(data));
     case 'criar': return comTratativaDeErro(()=>supabaseCriar(data));
     case 'atualizar': return comTratativaDeErro(()=>supabaseAtualizar(data));
     case 'excluir': return comTratativaDeErro(()=>supabaseExcluir(data));
-    case 'dashboard': return comTratativaDeErro(()=>supabaseDashboard());
+    case 'dashboard': return comTratativaDeErro(()=>supabaseDashboard(data));
     case 'trocarSenha': return comTratativaDeErro(()=>supabaseTrocarSenha(data));
     case 'listarOpcoes': return comTratativaDeErro(()=>supabaseListarOpcoes());
     case 'adicionarOpcao': return comTratativaDeErro(()=>supabaseAdicionarOpcao(data));
@@ -1397,26 +1398,69 @@ function celulaFormatada(coluna, valor){
   return escapeHtml(valor);
 }
 
-function renderizarLinhaAcao(linha){
-  const m = /^(\[\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\])\s*(.*)$/.exec(linha);
-  if(m){
-    return `<div class="linha-acao"><span class="carimbo-data-acao">${escapeHtml(m[1])}</span><span class="texto-acao">${escapeHtml(m[2])}</span></div>`;
-  }
-  return `<div class="linha-acao"><span class="texto-acao">${escapeHtml(linha)}</span></div>`;
+// entende os dois formatos gravados no histórico de ações:
+// - antigo: "[data hora] texto — Comissão: nomes" (tudo numa linha só)
+// - novo: "[data hora]" numa linha, depois o texto (pode ter várias linhas,
+//   com marcadores etc.), depois opcionalmente "Lançado por: usuário" e
+//   "Equipe: nomes", cada um na sua própria linha
+function parseBlocosAcao(valor){
+  const linhas = String(valor||'').split('\n');
+  const blocos = [];
+  let atual = null;
+  const regexData = /^\[(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\]\s*(.*)$/;
+  linhas.forEach(linha=>{
+    if(linha.trim()===''){ return; } // linhas em branco só separam blocos, não fazem parte de nenhum
+    const m = regexData.exec(linha);
+    if(m){
+      if(atual) blocos.push(atual);
+      atual = { dataHora: m[1], linhasTexto: [], lancadoPor: null, equipe: null };
+      const resto = m[2].trim();
+      if(resto){
+        // formato antigo: texto e "— Comissão/Equipe: nomes" tudo na mesma linha da data
+        const mEquipeInline = /^(.*?)\s+—\s+(?:Comissão|Equipe):\s*(.*)$/i.exec(resto);
+        if(mEquipeInline){
+          atual.linhasTexto.push(mEquipeInline[1].trim());
+          atual.equipe = mEquipeInline[2].trim();
+        } else {
+          atual.linhasTexto.push(resto);
+        }
+      }
+    } else if(atual){
+      const mEquipe = /^Equipe:\s*(.*)$/i.exec(linha);
+      const mLancado = /^Lançado por:\s*(.*)$/i.exec(linha);
+      if(mEquipe) atual.equipe = mEquipe[1].trim();
+      else if(mLancado) atual.lancadoPor = mLancado[1].trim();
+      else atual.linhasTexto.push(linha);
+    }
+  });
+  if(atual) blocos.push(atual);
+  return blocos;
 }
 
-function celulaAcaoFormatada(coluna, reg){
+function renderizarBlocoAcao(bloco, corSituacao){
+  const estilo = corSituacao ? ` style="border-left-color:${corSituacao}"` : '';
+  const metaPartes = [];
+  if(bloco.lancadoPor) metaPartes.push(`Lançado por: ${escapeHtml(bloco.lancadoPor)}`);
+  if(bloco.equipe) metaPartes.push(`Equipe: ${escapeHtml(bloco.equipe)}`);
+  return `<div class="bloco-acao"${estilo}>
+    <div class="data-bloco-acao mono">[${escapeHtml(bloco.dataHora)}]</div>
+    <div class="texto-bloco-acao">${escapeHtml(bloco.linhasTexto.join('\n'))}</div>
+    ${metaPartes.length ? `<div class="meta-bloco-acao">${metaPartes.join(' · ')}</div>` : ''}
+  </div>`;
+}
+
+function celulaAcaoFormatada(coluna, reg, corSituacao){
   const valor = reg[coluna.nome];
   if(!valor) return '<span class="vazio-inline">—</span>';
-  const linhas = String(valor).split('\n').filter(l=>l.length>0);
-  if(linhas.length===0) return '<span class="vazio-inline">—</span>';
-  if(linhas.length <= 2){
-    return `<div class="lista-acoes">${linhas.map(renderizarLinhaAcao).join('')}</div>`;
+  const blocos = parseBlocosAcao(valor);
+  if(blocos.length===0) return '<span class="vazio-inline">—</span>';
+  if(blocos.length <= 2){
+    return `<div class="lista-acoes">${blocos.map(b=>renderizarBlocoAcao(b, corSituacao)).join('')}</div>`;
   }
   const expandido = estado.expandidos.has(String(reg.ID));
-  const linhasParaMostrar = expandido ? linhas : linhas.slice(-2);
-  const restantes = linhas.length - 2;
-  return `<div class="lista-acoes">${linhasParaMostrar.map(renderizarLinhaAcao).join('')}</div>
+  const blocosParaMostrar = expandido ? blocos : blocos.slice(-2);
+  const restantes = blocos.length - 2;
+  return `<div class="lista-acoes">${blocosParaMostrar.map(b=>renderizarBlocoAcao(b, corSituacao)).join('')}</div>
     <button type="button" class="link-ver-mais" onclick="app.alternarExpandir('${escapeHtml(reg.ID)}')">
       ${expandido ? 'ver menos' : `ver mais (${restantes} ${restantes===1?'ação anterior':'ações anteriores'})`}
     </button>`;
@@ -1431,10 +1475,11 @@ function extrairMomentoRecente(reg, infoAba){
   // registros sem nenhuma ação com data/hora ficam no final da lista.
   const colunaHistorico = infoAba.colunas.find(c=>c.tipo==='texto_longo');
   if(colunaHistorico && reg[colunaHistorico.nome]){
-    const linhas = String(reg[colunaHistorico.nome]).split('\n').filter(l=>l.trim()!=='');
-    const ultimaLinha = linhas[linhas.length-1] || '';
-    const m = /\[(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})\]/.exec(ultimaLinha);
-    if(m) return new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]), Number(m[5])).getTime();
+    const blocos = parseBlocosAcao(reg[colunaHistorico.nome]);
+    if(blocos.length>0){
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/.exec(blocos[blocos.length-1].dataHora);
+      if(m) return new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]), Number(m[5])).getTime();
+    }
   }
   return -Infinity;
 }
@@ -1463,6 +1508,7 @@ function viewTabela(infoAba){
   const colunas = infoAba.colunas.filter(c=>!c.ehId);
   const podeExcluir = estado.papel === 'admin' || estado.papel === 'gerente';
   const colunasFiltraveis = colunas.filter(c=>c.tipo==='select');
+  const colunaSituacao = colunas.find(c=>normalizarBusca(c.nome)==='situacao');
 
   const termo = normalizarBusca(estado.filtro).trim();
   const filtrosAtivos = Object.entries(estado.filtrosColuna).filter(([,v])=>v);
@@ -1504,14 +1550,17 @@ function viewTabela(infoAba){
         <thead><tr>${colunas.map(c=>`<th>${escapeHtml(c.nome)}</th>`).join('')}<th></th></tr></thead>
         <tbody>
           ${registros.length===0 ? `<tr><td colspan="${colunas.length+1}" class="vazio">${(termo||filtrosAtivos.length>0) ? 'Nenhum registro encontrado para esse filtro.' : 'Nenhum registro ainda. Use "Novo registro" para começar.'}</td></tr>` :
-            registros.map(reg=>`
+            registros.map(reg=>{
+              const corSituacaoLinha = colunaSituacao ? corPaleta(Math.max(0, colunaSituacao.opcoes.indexOf(reg[colunaSituacao.nome]))) : null;
+              return `
             <tr>
-              ${colunas.map(c=> c.tipo==='texto_longo' ? `<td>${celulaAcaoFormatada(c, reg)}</td>` : `<td>${celulaFormatada(c, reg[c.nome])}</td>`).join('')}
+              ${colunas.map(c=> c.tipo==='texto_longo' ? `<td>${celulaAcaoFormatada(c, reg, corSituacaoLinha)}</td>` : `<td>${celulaFormatada(c, reg[c.nome])}</td>`).join('')}
               <td class="celula-acoes">
                 <button class="botao-icone" title="Editar / acrescentar ação" onclick="app.abrirEditar('${escapeHtml(infoAba.nome)}','${escapeHtml(reg.ID)}')">✎</button>
                 ${podeExcluir ? `<button class="botao-icone perigo" title="Excluir" onclick="app.excluirRegistro('${escapeHtml(infoAba.nome)}','${escapeHtml(reg.ID)}')">🗑</button>` : ''}
               </td>
-            </tr>`).join('')}
+            </tr>`;
+            }).join('')}
         </tbody>
       </table>
     </div>`;
@@ -1552,9 +1601,11 @@ function campoFormulario(coluna, valorAtual, indice, todasColunas, somenteLeitur
     return `<label>${rotulo}
         <textarea id="${id}" rows="6" class="${podeEditarTextoLivre?'':'textarea-somente-leitura'}" ${podeEditarTextoLivre?'':'readonly'} placeholder="${podeEditarTextoLivre?'Histórico de ações — você pode editar livremente aqui.':'O histórico aparece aqui — use os campos abaixo para adicionar uma nova ação.'}">${escapeHtml(valorAtual||'')}</textarea>
       </label>
+      <label style="margin-top:-6px">Nova ação
+        <textarea id="${id}_novaEntrada" rows="4" placeholder="Nova ação realizada agora… (pode escrever em várias linhas, usar marcadores etc.)"></textarea>
+      </label>
       <div class="ferramenta-historico">
-        <input type="text" id="${id}_novaEntrada" placeholder="Nova ação realizada agora…">
-        <input type="text" id="${id}_comissaoEntrada" placeholder="Comissão — nomes das pessoas envolvidas nesta ação (opcional)">
+        <input type="text" id="${id}_comissaoEntrada" placeholder="Equipe — nomes das pessoas envolvidas nesta ação (opcional)">
         <button type="button" class="botao-secundario" onclick="app.adicionarEntradaHistorico('${id}')">+ Adicionar ao histórico</button>
       </div>`;
   }
@@ -2010,10 +2061,11 @@ const app = {
     if(!texto) { campoNovaEntrada.focus(); return; }
     const agora = new Date();
     const dataHora = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-    const comissao = campoComissao ? campoComissao.value.trim() : '';
-    const sufixoComissao = comissao ? ` — Comissão: ${comissao}` : '';
-    const linhaNova = `[${dataHora}] ${texto}${sufixoComissao}`;
-    areaTexto.value = areaTexto.value ? (areaTexto.value + '\n' + linhaNova) : linhaNova;
+    const equipe = campoComissao ? campoComissao.value.trim() : '';
+    const linhasBloco = [`[${dataHora}]`, texto, `Lançado por: ${estado.usuario}`];
+    if(equipe) linhasBloco.push(`Equipe: ${equipe}`);
+    const blocoNovo = linhasBloco.join('\n');
+    areaTexto.value = areaTexto.value ? (areaTexto.value + '\n\n' + blocoNovo) : blocoNovo;
     campoNovaEntrada.value = '';
     if(campoComissao) campoComissao.value = '';
     areaTexto.scrollTop = areaTexto.scrollHeight;
