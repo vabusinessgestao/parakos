@@ -210,6 +210,25 @@
   .data-bloco-acao{ font-size:11px; color:var(--ink-soft); margin-bottom:2px; }
   .texto-bloco-acao{ white-space:pre-wrap; }
   .meta-bloco-acao{ font-size:11.5px; color:var(--ink-soft); margin-top:4px; font-style:italic; }
+
+  /* ---------- CALENDÁRIO ---------- */
+  .cartao-calendario{ background:var(--card); border:1px solid var(--rule); border-radius:var(--raio); padding:20px 22px; box-shadow:var(--sombra); }
+  .topo-calendario{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:12px; flex-wrap:wrap; }
+  .topo-calendario h3{ margin:0; font-size:18px; }
+  .grade-calendario{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cabecalho-dia-semana{ text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); padding-bottom:6px; }
+  .dia-calendario{ position:relative; min-height:64px; border:1px solid var(--paper-deep); border-radius:8px; padding:6px; background:var(--paper); }
+  .dia-calendario.vazio-dia{ border:none; background:transparent; }
+  .dia-calendario.dia-hoje{ border-color:var(--accent); border-width:2px; }
+  .dia-calendario.dia-com-acoes{ cursor:pointer; }
+  .dia-calendario.dia-com-acoes:hover{ background:rgba(189,138,46,0.10); }
+  .numero-dia{ font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
+  .contador-dia-calendario{ position:absolute; bottom:6px; right:6px; background:var(--accent); color:#fff; font-size:11px; font-weight:600; min-width:20px; height:20px; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 5px; }
+  .cabecalho-bloco-calendario{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  @media (max-width: 760px){
+    .dia-calendario{ min-height:44px; padding:4px; }
+    .numero-dia{ font-size:11px; }
+  }
   .link-ver-mais{ display:block; background:none; border:none; color:var(--accent-deep); font-size:12px; font-weight:600; text-decoration:underline; padding:4px 0 0; cursor:pointer; }
   .link-ver-mais:hover{ color:var(--accent); }
   .celula-acoes{ white-space:nowrap; text-align:right; }
@@ -261,7 +280,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.5.0',
+  VERSAO: 'v1.6.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -1078,7 +1097,10 @@ function estadoInicial(){
     coresTema:null,
     configLogoPreview:null,
     configPaletaSugerida:null,
-    funcionarios:null
+    funcionarios:null,
+    calendarioAno:null,
+    calendarioMes:null,
+    calendarioDiaSelecionado:null
   };
 }
 let estado = estadoInicial();
@@ -1250,7 +1272,7 @@ function viewLogin(){
 }
 
 function viewShell(){
-  const abaAtual = (estado.abaAtiva === 'dashboard' || estado.abaAtiva === 'configuracoes') ? null : (estado.schema||[]).find(a=>a.nome===estado.abaAtiva);
+  const abaAtual = (estado.abaAtiva === 'dashboard' || estado.abaAtiva === 'configuracoes' || estado.abaAtiva === 'calendario') ? null : (estado.schema||[]).find(a=>a.nome===estado.abaAtiva);
   return `
     <div class="app-shell">
       ${barraProgressoGlobal()}
@@ -1269,10 +1291,11 @@ function viewShell(){
         <nav class="lateral">
           ${(estado.schema||[]).map(a=>`<button class="aba-lateral ${estado.abaAtiva===a.nome?'ativa':''}" onclick="app.selecionarAba('${escapeHtml(a.nome)}')">📁 ${escapeHtml(a.nome)}</button>`).join('')}
           <button class="aba-lateral ${estado.abaAtiva==='dashboard'?'ativa':''}" onclick="app.selecionarAba('dashboard')">📊 Dashboard</button>
+          <button class="aba-lateral ${estado.abaAtiva==='calendario'?'ativa':''}" onclick="app.selecionarAba('calendario')">📅 Calendário</button>
           ${(estado.papel==='admin'||estado.papel==='gerente') ? `<button class="aba-lateral ${estado.abaAtiva==='configuracoes'?'ativa':''}" onclick="app.abrirConfiguracoes()">⚙️ Configurações</button>` : ''}
         </nav>
         <main class="conteudo">
-          ${estado.abaAtiva==='dashboard' ? viewDashboard() : estado.abaAtiva==='configuracoes' ? viewConfiguracoes() : (abaAtual ? viewTabela(abaAtual) : '<p>Aba não encontrada.</p>')}
+          ${estado.abaAtiva==='dashboard' ? viewDashboard() : estado.abaAtiva==='configuracoes' ? viewConfiguracoes() : estado.abaAtiva==='calendario' ? viewCalendario() : (abaAtual ? viewTabela(abaAtual) : '<p>Aba não encontrada.</p>')}
         </main>
       </div>
       ${rodapeApp()}
@@ -1367,6 +1390,117 @@ function viewDashboard(){
     </div>` : ''}
     ${cartoesGraficos}
   `;
+}
+
+/* ============================================================================
+   CALENDÁRIO — mesma ideia do Dashboard, mas mostrando as ações do histórico
+   organizadas por dia. Reaproveita os mesmos dados já carregados na aba de
+   Acompanhamento (respeitando as mesmas restrições de Franquia/Responsável).
+   ========================================================================== */
+function nomesMeses(){
+  return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+}
+function garantirMesCalendario(){
+  if(estado.calendarioAno==null || estado.calendarioMes==null){
+    const hoje = new Date();
+    estado.calendarioAno = hoje.getFullYear();
+    estado.calendarioMes = hoje.getMonth()+1;
+  }
+}
+// agrupa todas as ações (de todos os registros visíveis) por dia "dd/mm/aaaa"
+function agruparAcoesPorDia(registros, colunaHistorico){
+  const mapa = {};
+  (registros||[]).forEach(reg=>{
+    const valor = colunaHistorico ? reg[colunaHistorico.nome] : null;
+    if(!valor) return;
+    parseBlocosAcao(valor).forEach(bloco=>{
+      const diaChave = (bloco.dataHora||'').split(' ')[0];
+      if(!diaChave) return;
+      if(!mapa[diaChave]) mapa[diaChave] = [];
+      mapa[diaChave].push({ reg, bloco });
+    });
+  });
+  return mapa;
+}
+
+function viewCalendario(){
+  garantirMesCalendario();
+  const nomeAbaPrincipal = (estado.schema && estado.schema[0]) ? estado.schema[0].nome : 'Acompanhamento';
+  const infoAba = (estado.schema||[]).find(a=>a.nome===nomeAbaPrincipal);
+  const registros = estado.cache[nomeAbaPrincipal] || [];
+  const colunaHistorico = infoAba ? infoAba.colunas.find(c=>c.tipo==='texto_longo') : null;
+  const mapaAcoes = agruparAcoesPorDia(registros, colunaHistorico);
+
+  const ano = estado.calendarioAno, mes = estado.calendarioMes;
+  const primeiroDiaSemana = new Date(ano, mes-1, 1).getDay();
+  const diasNoMes = new Date(ano, mes, 0).getDate();
+  const nomesDiasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  const celulas = [];
+  for(let i=0;i<primeiroDiaSemana;i++) celulas.push(null);
+  for(let d=1; d<=diasNoMes; d++) celulas.push(d);
+  while(celulas.length % 7 !== 0) celulas.push(null);
+
+  const hoje = new Date();
+  const hojeStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`;
+
+  return `
+    <div class="cabecalho-conteudo">
+      <h2>Calendário</h2>
+      ${barraAtualizacao()}
+    </div>
+    ${estado.erroAtualizacao ? `<div class="aviso-discreto">${escapeHtml(estado.erroAtualizacao)}</div>` : ''}
+    <div class="cartao-calendario">
+      <div class="topo-calendario">
+        <button type="button" class="botao-secundario" onclick="app.mudarMesCalendario(-1)">‹ Anterior</button>
+        <h3>${escapeHtml(nomesMeses()[mes-1])} de ${ano}</h3>
+        <button type="button" class="botao-secundario" onclick="app.mudarMesCalendario(1)">Próximo ›</button>
+      </div>
+      <div class="grade-calendario">
+        ${nomesDiasSemana.map(n=>`<div class="cabecalho-dia-semana">${n}</div>`).join('')}
+        ${celulas.map(d=>{
+          if(d===null) return '<div class="dia-calendario vazio-dia"></div>';
+          const chave = `${String(d).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
+          const qtd = (mapaAcoes[chave]||[]).length;
+          const ehHoje = chave===hojeStr;
+          return `<div class="dia-calendario ${ehHoje?'dia-hoje':''} ${qtd>0?'dia-com-acoes':''}" ${qtd>0?`onclick="app.abrirDiaCalendario('${chave}')"`:''}>
+            <span class="numero-dia">${d}</span>
+            ${qtd>0 ? `<span class="contador-dia-calendario">${qtd}</span>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    ${estado.calendarioDiaSelecionado ? viewModalDiaCalendario(mapaAcoes[estado.calendarioDiaSelecionado]||[]) : ''}
+  `;
+}
+
+function viewModalDiaCalendario(entradas){
+  return `
+    <div class="sobreposicao" onclick="app.fecharModalSeClicarForaDiaCalendario(event)">
+      <div class="modal-caixa">
+        <h3>Ações em ${escapeHtml(estado.calendarioDiaSelecionado)}</h3>
+        <div class="lista-acoes" style="margin-top:14px">
+          ${entradas.length===0 ? '<p class="vazio-inline">Nenhuma ação nesse dia.</p>' : entradas.map(({reg,bloco})=>{
+            const meta = [];
+            meta.push(`Responsável: ${escapeHtml(reg['Responsável']||'—')}`);
+            if(bloco.lancadoPor) meta.push(`Lançado por: ${escapeHtml(bloco.lancadoPor)}`);
+            if(bloco.equipe) meta.push(`Equipe: ${escapeHtml(bloco.equipe)}`);
+            return `<div class="bloco-acao">
+              <div class="cabecalho-bloco-calendario">
+                <span class="etiqueta" style="--cor-etiqueta:${corPaleta(0)}">${escapeHtml(reg['Franquia']||'—')}</span>
+                <span class="mono" style="font-size:11px;color:var(--ink-soft)">${escapeHtml((bloco.dataHora||'').split(' ')[1]||'')}</span>
+              </div>
+              <div style="font-weight:600;margin:4px 0 2px">${escapeHtml(reg['Assunto']||'')}</div>
+              <div class="texto-bloco-acao">${escapeHtml(bloco.linhasTexto.join('\n'))}</div>
+              <div class="meta-bloco-acao">${meta.join(' · ')}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="acoes-modal">
+          <button type="button" class="botao-secundario" onclick="app.fecharDiaCalendario()">Fechar</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 function graficoBarrasSVG(contagem){
@@ -2001,6 +2135,28 @@ const app = {
     renderizar();
   },
 
+  mudarMesCalendario(delta){
+    garantirMesCalendario();
+    let novoMes = estado.calendarioMes + delta;
+    let novoAno = estado.calendarioAno;
+    if(novoMes<1){ novoMes = 12; novoAno--; }
+    else if(novoMes>12){ novoMes = 1; novoAno++; }
+    estado.calendarioMes = novoMes;
+    estado.calendarioAno = novoAno;
+    renderizar();
+  },
+  abrirDiaCalendario(chave){
+    estado.calendarioDiaSelecionado = chave;
+    renderizar();
+  },
+  fecharDiaCalendario(){
+    estado.calendarioDiaSelecionado = null;
+    renderizar();
+  },
+  fecharModalSeClicarForaDiaCalendario(e){
+    if(e.target.classList.contains('sobreposicao')) app.fecharDiaCalendario();
+  },
+
   async atualizarDados(){
     estado.carregando = true;
     renderizar();
@@ -2010,9 +2166,13 @@ const app = {
         if(!resp.ok) throw new Error(resp.erro || 'Falha ao buscar indicadores.');
         estado.painel = resp.painel;
       } else {
-        const resp = await apiCall('listar', { aba: estado.abaAtiva, usuarioFranquia: estado.franquia, usuarioResponsavelRestrito: estado.papel==='colaborador' ? estado.usuario : null });
+        // calendário usa os mesmos dados da aba principal de acompanhamento
+        const nomeAbaParaBuscar = estado.abaAtiva==='calendario'
+          ? ((estado.schema && estado.schema[0]) ? estado.schema[0].nome : 'Acompanhamento')
+          : estado.abaAtiva;
+        const resp = await apiCall('listar', { aba: nomeAbaParaBuscar, usuarioFranquia: estado.franquia, usuarioResponsavelRestrito: estado.papel==='colaborador' ? estado.usuario : null });
         if(!resp.ok) throw new Error(resp.erro || 'Falha ao buscar dados.');
-        estado.cache[estado.abaAtiva] = resp.registros;
+        estado.cache[nomeAbaParaBuscar] = resp.registros;
       }
       estado.ultimaAtualizacao = new Date();
       estado.erroAtualizacao = null;
