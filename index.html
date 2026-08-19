@@ -280,7 +280,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.6.0',
+  VERSAO: 'v1.7.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -332,7 +332,8 @@ let DEMO_DB = {
   // identidade visual (Configurações → Identidade visual) — só em memória no modo demo
   configuracoes: {
     logomarca: null,
-    coresTema: null
+    coresTema: null,
+    coresSituacao: null
   },
   acompanhamento: [
     { id: gerarUuid(), assunto:'Financeiro', subassunto:'Balancetes das Empresas do Grupo Hildebrando', situacao:null, responsavel:'Amanda',
@@ -638,7 +639,7 @@ function demoEditarUsuario(d){
 
 // ---- Configurações (admin): identidade visual (logomarca + cores) ----
 function demoConfigSistema(){
-  return { ok:true, logomarca: DEMO_DB.configuracoes.logomarca, coresTema: DEMO_DB.configuracoes.coresTema };
+  return { ok:true, logomarca: DEMO_DB.configuracoes.logomarca, coresTema: DEMO_DB.configuracoes.coresTema, coresSituacao: DEMO_DB.configuracoes.coresSituacao };
 }
 function demoSalvarLogomarca(d){
   if(!d.valor) return { ok:false, erro:'Nenhuma imagem enviada.' };
@@ -660,6 +661,12 @@ function demoSalvarCoresTema(d){
 function demoRestaurarCoresTema(){
   DEMO_DB.configuracoes.coresTema = null;
   return { ok:true };
+}
+function demoSalvarCoresSituacao(d){
+  const cores = d.cores || {};
+  if(!Object.values(cores).every(v=>/^#[0-9a-fA-F]{6}$/.test(v||''))) return { ok:false, erro:'Cores inválidas.' };
+  DEMO_DB.configuracoes.coresSituacao = cores;
+  return { ok:true, coresSituacao: cores };
 }
 
 /* ============================================================================
@@ -955,7 +962,7 @@ async function supabaseEditarUsuario(d){
 
 // ---- Configurações (admin): identidade visual (logomarca + cores) ----
 async function supabaseConfigSistema(){
-  const { data, error } = await clienteSupabase().from('configuracoes_sistema').select('chave, valor').in('chave', ['logomarca','cores_tema']);
+  const { data, error } = await clienteSupabase().from('configuracoes_sistema').select('chave, valor').in('chave', ['logomarca','cores_tema','cores_situacao']);
   if(error) return { ok:false, erro:'Falha ao carregar identidade visual: ' + error.message };
   const mapa = {};
   (data||[]).forEach(r=>{ mapa[r.chave] = r.valor; });
@@ -963,7 +970,11 @@ async function supabaseConfigSistema(){
   if(mapa['cores_tema']){
     try{ coresTema = JSON.parse(mapa['cores_tema']); } catch(erro){ coresTema = null; }
   }
-  return { ok:true, logomarca: mapa['logomarca'] || null, coresTema };
+  let coresSituacao = null;
+  if(mapa['cores_situacao']){
+    try{ coresSituacao = JSON.parse(mapa['cores_situacao']); } catch(erro){ coresSituacao = null; }
+  }
+  return { ok:true, logomarca: mapa['logomarca'] || null, coresTema, coresSituacao };
 }
 async function supabaseSalvarLogomarca(d){
   if(!d.valor) return { ok:false, erro:'Nenhuma imagem enviada.' };
@@ -989,6 +1000,13 @@ async function supabaseRestaurarCoresTema(){
   const { error } = await clienteSupabase().from('configuracoes_sistema').delete().eq('chave', 'cores_tema');
   if(error) return { ok:false, erro:'Falha ao restaurar as cores: ' + error.message };
   return { ok:true };
+}
+async function supabaseSalvarCoresSituacao(d){
+  const cores = d.cores || {};
+  if(!Object.values(cores).every(v=>/^#[0-9a-fA-F]{6}$/.test(v||''))) return { ok:false, erro:'Cores inválidas.' };
+  const { error } = await clienteSupabase().from('configuracoes_sistema').upsert({ chave:'cores_situacao', valor: JSON.stringify(cores) });
+  if(error) return { ok:false, erro:'Falha ao salvar as cores de Situação: ' + error.message };
+  return { ok:true, coresSituacao: cores };
 }
 
 /* ============================================================================
@@ -1031,6 +1049,7 @@ function apiCall(action, data){
           case 'salvarLogomarca': resultado = demoSalvarLogomarca(data); break;
           case 'removerLogomarca': resultado = demoRemoverLogomarca(); break;
           case 'salvarCoresTema': resultado = demoSalvarCoresTema(data); break;
+          case 'salvarCoresSituacao': resultado = demoSalvarCoresSituacao(data); break;
           case 'restaurarCoresTema': resultado = demoRestaurarCoresTema(); break;
           default: resultado = { ok:false, erro:'Ação desconhecida.' };
         }
@@ -1063,6 +1082,7 @@ function apiCall(action, data){
     case 'salvarLogomarca': return comTratativaDeErro(()=>supabaseSalvarLogomarca(data));
     case 'removerLogomarca': return comTratativaDeErro(()=>supabaseRemoverLogomarca());
     case 'salvarCoresTema': return comTratativaDeErro(()=>supabaseSalvarCoresTema(data));
+    case 'salvarCoresSituacao': return comTratativaDeErro(()=>supabaseSalvarCoresSituacao(data));
     case 'restaurarCoresTema': return comTratativaDeErro(()=>supabaseRestaurarCoresTema());
     default: return Promise.resolve({ ok:false, erro:'Ação desconhecida.' });
   }
@@ -1095,6 +1115,7 @@ function estadoInicial(){
     modalEditarUsuario:null,
     logomarca:null,
     coresTema:null,
+    coresSituacao:null,
     configLogoPreview:null,
     configPaletaSugerida:null,
     funcionarios:null,
@@ -1151,6 +1172,24 @@ function corPaleta(i){ return PALETA[((i%PALETA.length)+PALETA.length)%PALETA.le
    não é preferência pessoal salva no navegador.
    ========================================================================== */
 const CORES_TEMA_PADRAO = { paper:'#F2EEE2', ink:'#182238', accent:'#BD8A2E', accentDeep:'#8C6A22' };
+
+// cores padrão pra Situação (semânticas: concluído=verde, em andamento=amarelo,
+// pendente=vermelho). O admin pode sobrescrever qualquer uma em Configurações.
+// Valores sem cor definida (nem padrão nem personalizada) caem de volta na
+// paleta genérica cíclica (corPaleta), igual as outras colunas de lista.
+const CORES_SITUACAO_PADRAO = {
+  'Concluído': '#3E6B54',
+  'Em andamento': '#B8860B',
+  'Pendente': '#A23A3A'
+};
+function corParaSituacao(valor, opcoesSituacao){
+  if(!valor) return corPaleta(0);
+  const personalizada = (estado.coresSituacao||{})[valor];
+  if(personalizada) return personalizada;
+  if(CORES_SITUACAO_PADRAO[valor]) return CORES_SITUACAO_PADRAO[valor];
+  const idx = (opcoesSituacao||[]).indexOf(valor);
+  return corPaleta(idx<0?0:idx);
+}
 const LIMITE_LOGOMARCA_BYTES = 800 * 1024;
 
 function hexParaRgb(hex){
@@ -1289,9 +1328,9 @@ function viewShell(){
       </header>
       <div class="corpo">
         <nav class="lateral">
+          <button class="aba-lateral ${estado.abaAtiva==='calendario'?'ativa':''}" onclick="app.selecionarAba('calendario')">📅 Calendário</button>
           ${(estado.schema||[]).map(a=>`<button class="aba-lateral ${estado.abaAtiva===a.nome?'ativa':''}" onclick="app.selecionarAba('${escapeHtml(a.nome)}')">📁 ${escapeHtml(a.nome)}</button>`).join('')}
           <button class="aba-lateral ${estado.abaAtiva==='dashboard'?'ativa':''}" onclick="app.selecionarAba('dashboard')">📊 Dashboard</button>
-          <button class="aba-lateral ${estado.abaAtiva==='calendario'?'ativa':''}" onclick="app.selecionarAba('calendario')">📅 Calendário</button>
           ${(estado.papel==='admin'||estado.papel==='gerente') ? `<button class="aba-lateral ${estado.abaAtiva==='configuracoes'?'ativa':''}" onclick="app.abrirConfiguracoes()">⚙️ Configurações</button>` : ''}
         </nav>
         <main class="conteudo">
@@ -1525,8 +1564,10 @@ function graficoBarrasSVG(contagem){
 function celulaFormatada(coluna, valor){
   if(valor===undefined||valor===null||valor==='') return '<span class="vazio-inline">—</span>';
   if(coluna.tipo==='select'){
-    const idx = coluna.opcoes.indexOf(valor);
-    return `<span class="etiqueta" style="--cor-etiqueta:${corPaleta(idx<0?0:idx)}">${escapeHtml(valor)}</span>`;
+    const cor = normalizarBusca(coluna.nome)==='situacao'
+      ? corParaSituacao(valor, coluna.opcoes)
+      : corPaleta(Math.max(0, coluna.opcoes.indexOf(valor)));
+    return `<span class="etiqueta" style="--cor-etiqueta:${cor}">${escapeHtml(valor)}</span>`;
   }
   if(coluna.tipo==='data') return `<span class="mono">${escapeHtml(formatarDataBR(valor))}</span>`;
   if(coluna.tipo==='numero') return `<span class="mono">${escapeHtml(valor)}</span>`;
@@ -1687,7 +1728,7 @@ function viewTabela(infoAba){
         <tbody>
           ${registros.length===0 ? `<tr><td colspan="${colunas.length+1}" class="vazio">${(termo||filtrosAtivos.length>0) ? 'Nenhum registro encontrado para esse filtro.' : 'Nenhum registro ainda. Use "Novo registro" para começar.'}</td></tr>` :
             registros.map(reg=>{
-              const corSituacaoLinha = colunaSituacao ? corPaleta(Math.max(0, colunaSituacao.opcoes.indexOf(reg[colunaSituacao.nome]))) : null;
+              const corSituacaoLinha = colunaSituacao ? corParaSituacao(reg[colunaSituacao.nome], colunaSituacao.opcoes) : null;
               return `
             <tr>
               ${colunas.map(c=> c.tipo==='texto_longo' ? `<td>${celulaAcaoFormatada(c, reg, corSituacaoLinha)}</td>` : `<td>${celulaFormatada(c, reg[c.nome])}</td>`).join('')}
@@ -1894,6 +1935,19 @@ function viewConfiguracoes(){
     </div>
 
     <div class="cartao-config">
+      <h3>Cores por Situação</h3>
+      <p class="subtitulo" style="margin:0 0 14px">Escolha a cor de cada Situação — aparece nos selos da tabela e na barra do histórico de ações.</p>
+      ${(estado.configOpcoes && estado.configOpcoes['Situacao'] && estado.configOpcoes['Situacao'].length) ? `
+        <div class="grade-cores">
+          ${estado.configOpcoes['Situacao'].map(valor=>`
+            <label class="campo-cor">${escapeHtml(valor)}<input type="color" class="input-cor-situacao" value="${corParaSituacao(valor, estado.configOpcoes['Situacao'])}"></label>
+          `).join('')}
+        </div>
+        <button type="button" class="botao-primario" onclick="app.salvarCoresSituacaoConfig()" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Salvar cores de Situação'}</button>
+      ` : '<p class="vazio-inline">Cadastre opções de Situação em "Respostas das listas" primeiro.</p>'}
+    </div>
+
+    <div class="cartao-config">
       <h3>Respostas das listas</h3>
       <p class="subtitulo" style="margin:0 0 14px">Adicione ou remova as opções que aparecem nos menus suspensos.</p>
       <div class="abas-config">
@@ -2073,7 +2127,7 @@ const app = {
       if(respSchema.ok){
         estado.schema = respSchema.abas;
         estado.funcionarios = respFuncionarios.ok ? respFuncionarios.funcionarios : [];
-        estado.abaAtiva = 'dashboard';
+        estado.abaAtiva = 'calendario';
         salvarSessao(estado.usuario, estado.papel, estado.franquia);
         renderizar();
         app.atualizarDados();
@@ -2092,10 +2146,11 @@ const app = {
   sair(){
     if(estado.timerAuto) clearInterval(estado.timerAuto);
     limparSessaoSalva();
-    const { logomarca, coresTema } = estado; // identidade visual não é da sessão: mantém na tela de login
+    const { logomarca, coresTema, coresSituacao } = estado; // identidade visual não é da sessão: mantém na tela de login
     estado = estadoInicial();
     estado.logomarca = logomarca;
     estado.coresTema = coresTema;
+    estado.coresSituacao = coresSituacao;
     renderizar();
   },
 
@@ -2686,6 +2741,23 @@ const app = {
       estado.configErro = resp.erro || 'Não foi possível restaurar as cores.';
     }
     renderizar();
+  },
+  async salvarCoresSituacaoConfig(){
+    const valores = (estado.configOpcoes && estado.configOpcoes['Situacao']) || [];
+    const inputs = document.querySelectorAll('.input-cor-situacao');
+    const cores = {};
+    valores.forEach((v,i)=>{ if(inputs[i]) cores[v] = inputs[i].value; });
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('salvarCoresSituacao', { cores });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.coresSituacao = resp.coresSituacao;
+      estado.configErro = null;
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível salvar as cores de Situação.';
+    }
+    renderizar();
   }
 };
 window.app = app;
@@ -2701,6 +2773,7 @@ window.app = app;
   if(respConfig.ok){
     estado.logomarca = respConfig.logomarca || null;
     estado.coresTema = respConfig.coresTema || null;
+    estado.coresSituacao = respConfig.coresSituacao || null;
   }
   aplicarTemaCores(estado.coresTema);
 
@@ -2732,16 +2805,17 @@ window.app = app;
   if(respSchema.ok){
     estado.schema = respSchema.abas;
     estado.funcionarios = respFuncionarios.ok ? respFuncionarios.funcionarios : [];
-    estado.abaAtiva = 'dashboard';
+    estado.abaAtiva = 'calendario';
     renderizar();
     app.atualizarDados();
   } else {
     // não foi possível confirmar a sessão (banco fora do ar, etc.) — volta pro login
     limparSessaoSalva();
-    const { logomarca, coresTema } = estado;
+    const { logomarca, coresTema, coresSituacao } = estado;
     estado = estadoInicial();
     estado.logomarca = logomarca;
     estado.coresTema = coresTema;
+    estado.coresSituacao = coresSituacao;
     estado.erroLogin = 'Não foi possível restaurar sua sessão. Entre novamente.';
     renderizar();
   }
