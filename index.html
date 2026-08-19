@@ -261,7 +261,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.4.0',
+  VERSAO: 'v1.5.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -300,11 +300,11 @@ let DEMO_DB = {
     { categoria:'Responsavel', valor:'Bianca' },
     { categoria:'Responsavel', valor:'Cláudia' },
     { categoria:'Responsavel', valor:'Comissão' },
-    { categoria:'SubAssunto', valor:'Balancetes das Empresas do Grupo Hildebrando' },
-    { categoria:'SubAssunto', valor:'Relatório das Restituições Pessoa Física INSS' },
-    { categoria:'SubAssunto', valor:'Relatório Sub-limite Simples Nacional' },
-    { categoria:'SubAssunto', valor:'Relatório de Reuniões Realizadas' },
-    { categoria:'SubAssunto', valor:'Relatório Pró-labore Pago no Ano' }
+    { categoria:'Assunto', valor:'Balancetes das Empresas do Grupo Hildebrando' },
+    { categoria:'Assunto', valor:'Relatório das Restituições Pessoa Física INSS' },
+    { categoria:'Assunto', valor:'Relatório Sub-limite Simples Nacional' },
+    { categoria:'Assunto', valor:'Relatório de Reuniões Realizadas' },
+    { categoria:'Assunto', valor:'Relatório Pró-labore Pago no Ano' }
   ],
   // campos criados pelo admin (Configurações → Campos personalizados)
   camposPersonalizados: [
@@ -333,13 +333,13 @@ let DEMO_DB = {
 // os campos personalizados (criados pelo admin) NÃO entram aqui — eles ficam
 // guardados dentro da coluna "campos_extras" (formato flexível), não como
 // colunas fixas, porque podem ser criados/removidos a qualquer momento.
-const MAPA_CAMPOS_DB = { Franquia:'assunto', SubAssunto:'subassunto', Situação:'situacao', Responsável:'responsavel', Ação:'acao' };
+const MAPA_CAMPOS_DB = { Franquia:'assunto', Assunto:'subassunto', Situação:'situacao', Responsável:'responsavel', Ação:'acao' };
 
 function linhaParaRegistro(linha, camposPersonalizados){
   const registro = {
     ID: linha.id,
     Franquia: linha.assunto,
-    SubAssunto: linha.subassunto,
+    Assunto: linha.subassunto,
     Situação: linha.situacao,
     Responsável: linha.responsavel,
     Ação: linha.acao
@@ -369,7 +369,7 @@ function demoEsquema(){
   const camposPersonalizados = DEMO_DB.camposPersonalizados.slice().sort((a,b)=>a.ordem-b.ordem);
   const colunas = [
     { nome:'Franquia', tipo:'select', opcoes: demoOpcoesPorCategoria('Franquia') },
-    { nome:'SubAssunto', tipo:'select', opcoes: demoOpcoesPorCategoria('SubAssunto') },
+    { nome:'Assunto', tipo:'select', opcoes: demoOpcoesPorCategoria('Assunto') },
     { nome:'Situação', tipo:'select', opcoes: demoOpcoesPorCategoria('Situacao') },
     { nome:'Responsável', tipo:'select', opcoes: demoOpcoesPorCategoria('Responsavel') },
     ...camposPersonalizados.map(c=>({ nome:c.nome, tipo:c.tipo, opcoes:c.opcoes||[], personalizado:true, idPersonalizado:c.id })),
@@ -396,10 +396,10 @@ function demoListar(d){
   if(d.usuarioResponsavelRestrito) linhas = linhas.filter(l=>l.responsavel===d.usuarioResponsavelRestrito);
   return { ok:true, registros: linhas.map(l=>linhaParaRegistro(l, DEMO_DB.camposPersonalizados)) };
 }
-function demoVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
-  if(!subassunto) return null;
-  const achou = DEMO_DB.acompanhamento.find(l => l.subassunto===subassunto && l.id!==idIgnorar);
-  return achou ? `Já existe um registro com o SubAssunto "${subassunto}". Edite o registro existente em vez de criar um novo.` : null;
+function demoVerificarSubAssuntoDuplicado(assunto, franquia, idIgnorar){
+  if(!assunto) return null;
+  const achou = DEMO_DB.acompanhamento.find(l => l.subassunto===assunto && l.assunto===franquia && l.id!==idIgnorar);
+  return achou ? `Já existe um registro com o Assunto "${assunto}" nessa Franquia. Edite o registro existente em vez de criar um novo.` : null;
 }
 function demoCriar(d){
   const registro = d.registro || {};
@@ -409,7 +409,7 @@ function demoCriar(d){
   if(d.usuarioResponsavelRestrito && String(registro.Responsável||'') !== String(d.usuarioResponsavelRestrito)){
     return { ok:false, erro:'Você só pode lançar registros em que você é o Responsável.' };
   }
-  const erro = demoVerificarSubAssuntoDuplicado(registro.SubAssunto, null);
+  const erro = demoVerificarSubAssuntoDuplicado(registro.Assunto, registro.Franquia, null);
   if(erro) return { ok:false, erro };
   const novaLinha = Object.assign({ id: gerarUuid() }, registroParaLinha(registro, DEMO_DB.camposPersonalizados));
   DEMO_DB.acompanhamento.push(novaLinha);
@@ -431,8 +431,9 @@ function demoAtualizar(d){
   if(d.usuarioResponsavelRestrito && registro.Responsável !== undefined && String(registro.Responsável) !== String(d.usuarioResponsavelRestrito)){
     return { ok:false, erro:'Você não tem permissão para mover um registro para outro Responsável.' };
   }
-  if(registro.SubAssunto !== undefined && String(registro.SubAssunto) !== String(linha.subassunto)){
-    const erro = demoVerificarSubAssuntoDuplicado(registro.SubAssunto, d.id);
+  const franquiaParaChecagem = registro.Franquia !== undefined ? registro.Franquia : linha.assunto;
+  if(registro.Assunto !== undefined && String(registro.Assunto) !== String(linha.subassunto)){
+    const erro = demoVerificarSubAssuntoDuplicado(registro.Assunto, franquiaParaChecagem, d.id);
     if(erro) return { ok:false, erro };
   }
   Object.assign(linha, registroParaLinha(registro, DEMO_DB.camposPersonalizados));
@@ -469,7 +470,7 @@ function demoDashboard(d){
   let colunaHistorico=null, colunaSubAssunto=null;
   infoAba.colunas.forEach(c=>{
     if(c.tipo==='texto_longo') colunaHistorico=c;
-    if(normalizarBusca(c.nome)==='subassunto') colunaSubAssunto=c;
+    if(normalizarBusca(c.nome)==='assunto') colunaSubAssunto=c;
     if(c.tipo!=='select') return;
     const contagem={}; c.opcoes.forEach(op=>contagem[op]=0);
     registros.forEach(r=>{ const v=r[c.nome]; if(v) contagem[v]=(contagem[v]||0)+1; });
@@ -514,7 +515,7 @@ function demoListarCampos(){
 function demoCriarCampo(d){
   const nome = (d.nome||'').trim();
   if(!nome) return { ok:false, erro:'Dê um nome para o campo.' };
-  const nomesReservados = ['id','franquia','subassunto','situação','responsável','ação'];
+  const nomesReservados = ['id','franquia','assunto','situação','responsável','ação'];
   if(nomesReservados.includes(nome.toLowerCase())) return { ok:false, erro:'Esse nome já é usado por um campo padrão do sistema.' };
   const jaExiste = DEMO_DB.camposPersonalizados.some(c=>c.nome.toLowerCase()===nome.toLowerCase());
   if(jaExiste) return { ok:false, erro:'Já existe um campo personalizado com esse nome.' };
@@ -666,7 +667,7 @@ async function supabaseEsquema(){
   const camposPersonalizados = await supabaseCamposPersonalizados();
   const colunas = [
     { nome:'Franquia', tipo:'select', opcoes: mapa['Franquia']||[] },
-    { nome:'SubAssunto', tipo:'select', opcoes: mapa['SubAssunto']||[] },
+    { nome:'Assunto', tipo:'select', opcoes: mapa['Assunto']||[] },
     { nome:'Situação', tipo:'select', opcoes: mapa['Situacao']||[] },
     { nome:'Responsável', tipo:'select', opcoes: mapa['Responsavel']||[] },
     ...camposPersonalizados.map(c=>({ nome:c.nome, tipo:c.tipo, opcoes:c.opcoes, personalizado:true, idPersonalizado:c.id })),
@@ -699,14 +700,14 @@ async function supabaseListar(d){
   if(error) return { ok:false, erro:'Falha ao listar: ' + error.message };
   return { ok:true, registros: data.map(l=>linhaParaRegistro(l, camposPersonalizados)) };
 }
-async function supabaseVerificarSubAssuntoDuplicado(subassunto, idIgnorar){
-  if(!subassunto) return null;
-  let consulta = clienteSupabase().from('acompanhamento').select('id').eq('subassunto', subassunto);
+async function supabaseVerificarSubAssuntoDuplicado(assunto, franquia, idIgnorar){
+  if(!assunto) return null;
+  let consulta = clienteSupabase().from('acompanhamento').select('id').eq('subassunto', assunto).eq('assunto', franquia);
   if(idIgnorar) consulta = consulta.neq('id', idIgnorar);
   const { data, error } = await consulta;
   if(error) return null; // não bloqueia por falha na checagem; deixa o salvar seguir e reportar o erro dele
   return (data && data.length>0)
-    ? `Já existe um registro com o SubAssunto "${subassunto}". Edite o registro existente em vez de criar um novo.`
+    ? `Já existe um registro com o Assunto "${assunto}" nessa Franquia. Edite o registro existente em vez de criar um novo.`
     : null;
 }
 async function supabaseCriar(d){
@@ -717,7 +718,7 @@ async function supabaseCriar(d){
   if(d.usuarioResponsavelRestrito && String(registro.Responsável||'') !== String(d.usuarioResponsavelRestrito)){
     return { ok:false, erro:'Você só pode lançar registros em que você é o Responsável.' };
   }
-  const erroDuplicado = await supabaseVerificarSubAssuntoDuplicado(registro.SubAssunto, null);
+  const erroDuplicado = await supabaseVerificarSubAssuntoDuplicado(registro.Assunto, registro.Franquia, null);
   if(erroDuplicado) return { ok:false, erro:erroDuplicado };
   const camposPersonalizados = await supabaseCamposPersonalizados();
   const { data, error } = await clienteSupabase().from('acompanhamento').insert(registroParaLinha(registro, camposPersonalizados)).select().single();
@@ -726,8 +727,11 @@ async function supabaseCriar(d){
 }
 async function supabaseAtualizar(d){
   const registro = d.registro || {};
-  if(d.usuarioFranquia || d.usuarioResponsavelRestrito){
-    const { data: atualRegistro } = await clienteSupabase().from('acompanhamento').select('assunto, responsavel').eq('id', d.id).maybeSingle();
+  const precisaBuscarAtual = d.usuarioFranquia || d.usuarioResponsavelRestrito || registro.Assunto !== undefined;
+  let atualRegistro = null;
+  if(precisaBuscarAtual){
+    const resp = await clienteSupabase().from('acompanhamento').select('assunto, subassunto, responsavel').eq('id', d.id).maybeSingle();
+    atualRegistro = resp.data || null;
     if(d.usuarioFranquia && (!atualRegistro || String(atualRegistro.assunto) !== String(d.usuarioFranquia))){
       return { ok:false, erro:'Você não tem permissão para editar registros de outra Franquia.' };
     }
@@ -741,12 +745,10 @@ async function supabaseAtualizar(d){
       return { ok:false, erro:'Você não tem permissão para mover um registro para outro Responsável.' };
     }
   }
-  if(registro.SubAssunto !== undefined){
-    const { data: atual } = await clienteSupabase().from('acompanhamento').select('subassunto').eq('id', d.id).maybeSingle();
-    if(atual && String(atual.subassunto) !== String(registro.SubAssunto)){
-      const erroDuplicado = await supabaseVerificarSubAssuntoDuplicado(registro.SubAssunto, d.id);
-      if(erroDuplicado) return { ok:false, erro:erroDuplicado };
-    }
+  if(registro.Assunto !== undefined && atualRegistro && String(atualRegistro.subassunto) !== String(registro.Assunto)){
+    const franquiaParaChecagem = registro.Franquia !== undefined ? registro.Franquia : atualRegistro.assunto;
+    const erroDuplicado = await supabaseVerificarSubAssuntoDuplicado(registro.Assunto, franquiaParaChecagem, d.id);
+    if(erroDuplicado) return { ok:false, erro:erroDuplicado };
   }
   const camposPersonalizados = await supabaseCamposPersonalizados();
   const { error } = await clienteSupabase().from('acompanhamento').update(registroParaLinha(registro, camposPersonalizados)).eq('id', d.id);
@@ -794,7 +796,7 @@ async function supabaseDashboard(d){
   let colunaHistorico=null, colunaSubAssunto=null;
   infoAba.colunas.forEach(c=>{
     if(c.tipo==='texto_longo') colunaHistorico=c;
-    if(normalizarBusca(c.nome)==='subassunto') colunaSubAssunto=c;
+    if(normalizarBusca(c.nome)==='assunto') colunaSubAssunto=c;
     if(c.tipo!=='select') return;
     const contagem={}; c.opcoes.forEach(op=>contagem[op]=0);
     registros.forEach(r=>{ const v=r[c.nome]; if(v) contagem[v]=(contagem[v]||0)+1; });
@@ -844,7 +846,7 @@ async function supabaseListarCampos(){
 async function supabaseCriarCampo(d){
   const nome = (d.nome||'').trim();
   if(!nome) return { ok:false, erro:'Dê um nome para o campo.' };
-  const nomesReservados = ['id','franquia','subassunto','situação','responsável','ação'];
+  const nomesReservados = ['id','franquia','assunto','situação','responsável','ação'];
   if(nomesReservados.includes(nome.toLowerCase())) return { ok:false, erro:'Esse nome já é usado por um campo padrão do sistema.' };
   const { count } = await clienteSupabase().from('campos_personalizados').select('*', { count:'exact', head:true });
   const { data, error } = await clienteSupabase().from('campos_personalizados')
@@ -1328,9 +1330,9 @@ function viewDashboard(){
 
   const cartoesGraficos = abasComDados.map(nome =>
     Object.keys(painel[nome].distribuicoes||{}).map(nomeColuna=>{
-      // a coluna SubAssunto tem seu próprio card no formato x/y (registros / ações),
+      // a coluna Assunto tem seu próprio card no formato x/y (registros / ações),
       // em vez do gráfico de barras genérico (que corta nomes longos e não mostra ações)
-      if(nomeColuna.toLowerCase()==='subassunto' && painel[nome].porSubAssunto){
+      if(nomeColuna.toLowerCase()==='assunto' && painel[nome].porSubAssunto){
         const corpo = listaFracoesHTML(painel[nome].porSubAssunto);
         if(!corpo) return '';
         return `<div class="cartao-grafico">
@@ -1684,7 +1686,7 @@ function viewModalSenha(){
    ========================================================================== */
 const CATEGORIAS_OPCOES = [
   { chave:'Franquia', rotulo:'Franquia' },
-  { chave:'SubAssunto', rotulo:'SubAssunto' },
+  { chave:'Assunto', rotulo:'Assunto' },
   { chave:'Situacao', rotulo:'Situação' }
 ];
 
