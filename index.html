@@ -224,6 +224,55 @@
   .dia-calendario.dia-com-acoes:hover{ background:rgba(189,138,46,0.10); }
   .numero-dia{ font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
   .contador-dia-calendario{ position:absolute; bottom:6px; right:6px; background:var(--accent); color:#fff; font-size:11px; font-weight:600; min-width:20px; height:20px; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 5px; }
+  .abas-visualizacao-calendario{ display:flex; gap:6px; margin-bottom:14px; }
+  .aba-visualizacao{ background:var(--paper-deep); border:1px solid var(--rule); border-radius:20px; padding:6px 16px; font-size:13px; color:var(--ink-soft); font-weight:500; }
+  .aba-visualizacao.ativa{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+
+  /* ---------- CALENDÁRIO ANUAL ---------- */
+  .grade-anual{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; }
+  .mini-mes-anual h4{ font-family:'Fraunces',serif; font-size:14px; margin:0 0 6px; text-align:center; }
+  .grade-mini-mes{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .mini-cabecalho-dia{ text-align:center; font-size:9px; color:var(--ink-soft); }
+  .mini-dia{ position:relative; text-align:center; font-size:10.5px; color:var(--ink-soft); padding:3px 0; border-radius:3px; }
+  .mini-dia.dia-hoje{ background:var(--paper-deep); font-weight:700; color:var(--ink); }
+  .mini-dia.dia-com-acoes{ cursor:pointer; color:var(--ink); font-weight:600; }
+  .mini-dia.dia-com-acoes:hover{ background:rgba(189,138,46,0.15); }
+  .mini-ponto{ display:block; width:4px; height:4px; border-radius:50%; background:var(--accent); margin:1px auto 0; }
+
+  /* ---------- CALENDÁRIO SEMANAL/DIÁRIO (grade de horário) ---------- */
+  .grade-horaria-calendario{ display:flex; overflow-x:auto; border:1px solid var(--rule); border-radius:8px; max-height:640px; overflow-y:auto; }
+  .coluna-horas{ flex:0 0 56px; border-right:1px solid var(--paper-deep); background:var(--paper-deep); }
+  .celula-cabecalho-horas{ height:40px; border-bottom:1px solid var(--rule); position:sticky; top:0; background:var(--paper-deep); z-index:2; }
+  .rotulo-hora{ font-size:10px; color:var(--ink-soft); text-align:right; padding:2px 6px 0 0; border-bottom:1px solid rgba(0,0,0,0.03); box-sizing:border-box; font-family:'IBM Plex Mono',monospace; }
+  .coluna-dia-horario{ flex:1; min-width:120px; border-right:1px solid var(--paper-deep); }
+  .celula-cabecalho-dia-horario{ height:40px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; border-bottom:1px solid var(--rule); position:sticky; top:0; background:var(--card); z-index:2; }
+  .celula-cabecalho-dia-horario.dia-hoje{ color:var(--accent-deep); }
+  .corpo-coluna-dia-horario{ position:relative; }
+  .linha-hora{ border-bottom:1px solid rgba(0,0,0,0.05); box-sizing:border-box; }
+  .evento-calendario{ position:absolute; left:2px; right:2px; background:var(--cor-evento, var(--accent)); color:#fff; border-radius:4px; padding:2px 5px; font-size:10.5px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; cursor:pointer; height:20px; display:flex; align-items:center; gap:4px; }
+  .hora-evento-calendario{ font-size:9px; opacity:.9; flex:0 0 auto; }
+  .texto-evento-calendario{ overflow:hidden; text-overflow:ellipsis; }
+
+  .cabecalho-bloco-acao{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .botoes-enviar-bloco{ display:flex; gap:4px; }
+  .botoes-enviar-bloco .botao-icone{ padding:2px 6px; font-size:12px; }
+
+  /* ---------- CARDS (post-its) ---------- */
+  .quadro-recados{ position:relative; min-height:420px; background:var(--paper-deep); border:1px dashed var(--rule); border-radius:10px; overflow:hidden; }
+  .post-it{
+    position:absolute; width:200px; min-height:120px; padding:12px 14px; border-radius:3px;
+    box-shadow:0 6px 14px rgba(0,0,0,0.18); transform:rotate(-1.5deg); cursor:grab; user-select:none;
+    font-family:'IBM Plex Sans', sans-serif; color:#241a05;
+  }
+  .post-it:nth-child(even){ transform:rotate(1.5deg); }
+  .post-it:active{ cursor:grabbing; }
+  .post-it-remetente{ font-weight:700; font-size:12px; margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em; }
+  .post-it-texto{ font-size:13.5px; white-space:pre-wrap; line-height:1.4; margin-bottom:10px; }
+  .post-it-botao-responder{ background:rgba(255,255,255,0.55); border:1px solid rgba(0,0,0,0.15); border-radius:5px; padding:5px 9px; font-size:12px; font-weight:600; cursor:pointer; }
+  .post-it-resposta{ width:100%; box-sizing:border-box; min-height:56px; font-size:12.5px; margin-bottom:8px; }
+  .post-it-acoes{ display:flex; gap:6px; justify-content:flex-end; }
+  .cartao-recado-enviado{ background:var(--card); border:1px solid var(--rule); border-radius:8px; padding:14px 16px; margin-bottom:10px; box-shadow:var(--sombra); }
+  .resposta-recado-enviado{ background:var(--paper-deep); border-radius:6px; padding:8px 10px; font-size:13px; margin-top:6px; }
   .cabecalho-bloco-calendario{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
   @media (max-width: 760px){
     .dia-calendario{ min-height:44px; padding:4px; }
@@ -280,7 +329,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v1.7.0',
+  VERSAO: 'v2.0.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -346,7 +395,9 @@ let DEMO_DB = {
       acao:'[27/07/2026] Karen: 03-04-01-01 (férias reuniões) | Bianca: 00-01-02-01-00\n[20/07/2026] Reuniões pendentes atualizadas', campos_extras:{} },
     { id: gerarUuid(), assunto:'Relatórios', subassunto:'Relatório Pró-labore Pago no Ano', situacao:'Concluído', responsavel:'Cláudia',
       acao:'[03/08/2026] Analisar 5 pessoas físicas por semana — 05 analisadas, faltando 13', campos_extras:{} }
-  ]
+  ],
+  // recados (post-its) da aba Cards — só em memória no modo demo
+  recados: []
 };
 
 // mapa entre o nome "bonito" usado na tela (com acento) e a coluna real no banco.
@@ -555,11 +606,12 @@ function demoExcluirCampo(d){
 }
 
 // ---- Configurações (admin): gerenciar usuários ----
+const COR_POST_IT_PADRAO = '#FDE68A';
 function demoListarUsuarios(){
-  return { ok:true, usuarios: DEMO_DB.usuarios.map(u=>({ usuario:u.usuario, papel:u.papel, franquia:u.franquia||null })) };
+  return { ok:true, usuarios: DEMO_DB.usuarios.map(u=>({ usuario:u.usuario, papel:u.papel, franquia:u.franquia||null, cor_post_it:u.cor_post_it||null })) };
 }
 function demoListarFuncionarios(){
-  return { ok:true, funcionarios: DEMO_DB.usuarios.filter(u=>u.papel==='colaborador'||u.papel==='gerente').map(u=>({ usuario:u.usuario, papel:u.papel, franquia:u.franquia||null })) };
+  return { ok:true, funcionarios: DEMO_DB.usuarios.filter(u=>u.papel==='colaborador'||u.papel==='gerente').map(u=>({ usuario:u.usuario, papel:u.papel, franquia:u.franquia||null, cor_post_it:u.cor_post_it||null })) };
 }
 const PAPEIS_VALIDOS = ['admin','gerente','colaborador'];
 function normalizarPapel(papel){
@@ -589,6 +641,7 @@ function demoCriarUsuario(d){
   const senha = d.senha||'';
   const papel = normalizarPapel(d.papel);
   const franquia = d.franquia || null;
+  const corPostIt = d.corPostIt || null;
   if(!usuario) return { ok:false, erro:'Dê um nome de usuário.' };
   if(senha.length < 4) return { ok:false, erro:'A senha precisa ter pelo menos 4 caracteres.' };
   const erroFranquia = validarFranquiaObrigatoriaParaGerente(papel, franquia);
@@ -597,8 +650,8 @@ function demoCriarUsuario(d){
   if(erroEscopo) return { ok:false, erro:erroEscopo };
   const jaExiste = DEMO_DB.usuarios.some(u=>u.usuario===usuario);
   if(jaExiste) return { ok:false, erro:'Já existe um usuário com esse nome.' };
-  DEMO_DB.usuarios.push({ usuario, senha, papel, franquia });
-  return { ok:true, usuario:{ usuario, papel, franquia } };
+  DEMO_DB.usuarios.push({ usuario, senha, papel, franquia, cor_post_it: corPostIt });
+  return { ok:true, usuario:{ usuario, papel, franquia, cor_post_it: corPostIt } };
 }
 function demoExcluirUsuario(d){
   if(d.usuario === d.usuarioLogado) return { ok:false, erro:'Você não pode excluir o próprio usuário enquanto estiver logado com ele.' };
@@ -634,7 +687,57 @@ function demoEditarUsuario(d){
   }
   usuario.papel = papel;
   usuario.franquia = franquia;
-  return { ok:true, usuario:{ usuario:usuario.usuario, papel:usuario.papel, franquia:usuario.franquia } };
+  if(d.corPostIt) usuario.cor_post_it = d.corPostIt;
+  return { ok:true, usuario:{ usuario:usuario.usuario, papel:usuario.papel, franquia:usuario.franquia, cor_post_it:usuario.cor_post_it||null } };
+}
+
+// ---- Cards (post-its) ----
+function demoListarRecados(d){
+  const usuario = d.usuario;
+  const recebidos = DEMO_DB.recados.filter(r=>r.destinatario===usuario && !r.fechado_destinatario);
+  const enviados = DEMO_DB.recados.filter(r=>r.remetente===usuario && !r.fechado_remetente);
+  return { ok:true, recebidos, enviados };
+}
+function demoCriarRecado(d){
+  const texto = (d.texto||'').trim();
+  if(!texto) return { ok:false, erro:'Escreva uma mensagem.' };
+  const destinatarioUsuario = DEMO_DB.usuarios.find(u=>u.usuario===d.destinatario);
+  if(!destinatarioUsuario) return { ok:false, erro:'Destinatário não encontrado.' };
+  if(d.atorPapel!=='admin' && destinatarioUsuario.franquia !== d.atorFranquia){
+    return { ok:false, erro:'Você só pode mandar recado pra colegas da sua própria Franquia.' };
+  }
+  const novo = {
+    id: gerarUuid(), remetente: d.remetente, destinatario: d.destinatario, texto,
+    resposta: null, fechado_destinatario: false, fechado_remetente: false,
+    pos_x: 30 + Math.round(Math.random()*140), pos_y: 20 + Math.round(Math.random()*90),
+    criado_em: new Date().toISOString(), respondido_em: null
+  };
+  DEMO_DB.recados.push(novo);
+  return { ok:true, recado: novo };
+}
+function demoResponderRecado(d){
+  const recado = DEMO_DB.recados.find(r=>r.id===d.id);
+  if(!recado) return { ok:false, erro:'Recado não encontrado.' };
+  if(recado.destinatario !== d.usuarioLogado) return { ok:false, erro:'Você não pode responder um recado que não é seu.' };
+  recado.resposta = (d.resposta||'').trim();
+  recado.fechado_destinatario = true;
+  recado.respondido_em = new Date().toISOString();
+  return { ok:true, recado };
+}
+function demoFecharRecadoRemetente(d){
+  const recado = DEMO_DB.recados.find(r=>r.id===d.id);
+  if(!recado) return { ok:false, erro:'Recado não encontrado.' };
+  if(recado.remetente !== d.usuarioLogado) return { ok:false, erro:'Você não pode fechar um recado que não enviou.' };
+  recado.fechado_remetente = true;
+  return { ok:true };
+}
+function demoAtualizarPosicaoRecado(d){
+  const recado = DEMO_DB.recados.find(r=>r.id===d.id);
+  if(!recado) return { ok:false, erro:'Recado não encontrado.' };
+  if(recado.destinatario !== d.usuarioLogado) return { ok:false, erro:'Você só pode mover recados no seu próprio quadro.' };
+  recado.pos_x = d.posX;
+  recado.pos_y = d.posY;
+  return { ok:true };
 }
 
 // ---- Configurações (admin): identidade visual (logomarca + cores) ----
@@ -891,12 +994,12 @@ async function supabaseExcluirCampo(d){
 
 // ---- Configurações (admin): gerenciar usuários ----
 async function supabaseListarUsuarios(){
-  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel, franquia').order('usuario');
+  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel, franquia, cor_post_it').order('usuario');
   if(error) return { ok:false, erro:'Falha ao carregar usuários: ' + error.message };
   return { ok:true, usuarios:data };
 }
 async function supabaseListarFuncionarios(){
-  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel, franquia').in('papel', ['colaborador','gerente']).order('usuario');
+  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel, franquia, cor_post_it').in('papel', ['colaborador','gerente']).order('usuario');
   if(error) return { ok:false, erro:'Falha ao carregar funcionários: ' + error.message };
   return { ok:true, funcionarios:data };
 }
@@ -905,13 +1008,14 @@ async function supabaseCriarUsuario(d){
   const senha = d.senha||'';
   const papel = normalizarPapel(d.papel);
   const franquia = d.franquia || null;
+  const corPostIt = d.corPostIt || null;
   if(!usuario) return { ok:false, erro:'Dê um nome de usuário.' };
   if(senha.length < 4) return { ok:false, erro:'A senha precisa ter pelo menos 4 caracteres.' };
   const erroFranquia = validarFranquiaObrigatoriaParaGerente(papel, franquia);
   if(erroFranquia) return { ok:false, erro:erroFranquia };
   const erroEscopo = validarEscopoGerenteParaUsuario(Object.assign({}, d, { papel, franquia }));
   if(erroEscopo) return { ok:false, erro:erroEscopo };
-  const { data, error } = await clienteSupabase().from('usuarios').insert({ usuario, senha, papel, franquia }).select('usuario, papel, franquia').single();
+  const { data, error } = await clienteSupabase().from('usuarios').insert({ usuario, senha, papel, franquia, cor_post_it: corPostIt }).select('usuario, papel, franquia, cor_post_it').single();
   if(error){
     if(error.code === '23505') return { ok:false, erro:'Já existe um usuário com esse nome.' };
     return { ok:false, erro:'Falha ao criar usuário: ' + error.message };
@@ -955,9 +1059,68 @@ async function supabaseEditarUsuario(d){
     if(String(d.novaSenha).length < 4) return { ok:false, erro:'A nova senha precisa ter pelo menos 4 caracteres.' };
     atualizacao.senha = d.novaSenha;
   }
-  const { data, error } = await clienteSupabase().from('usuarios').update(atualizacao).eq('usuario', d.usuario).select('usuario, papel, franquia').single();
+  if(d.corPostIt) atualizacao.cor_post_it = d.corPostIt;
+  const { data, error } = await clienteSupabase().from('usuarios').update(atualizacao).eq('usuario', d.usuario).select('usuario, papel, franquia, cor_post_it').single();
   if(error) return { ok:false, erro:'Falha ao editar usuário: ' + error.message };
   return { ok:true, usuario:data };
+}
+
+// ---- Cards (post-its) ----
+async function supabaseListarRecados(d){
+  const usuario = d.usuario;
+  const [respRecebidos, respEnviados] = await Promise.all([
+    clienteSupabase().from('recados').select('*').eq('destinatario', usuario).eq('fechado_destinatario', false).order('criado_em'),
+    clienteSupabase().from('recados').select('*').eq('remetente', usuario).eq('fechado_remetente', false).order('criado_em')
+  ]);
+  if(respRecebidos.error) return { ok:false, erro:'Falha ao carregar recados: ' + respRecebidos.error.message };
+  if(respEnviados.error) return { ok:false, erro:'Falha ao carregar recados: ' + respEnviados.error.message };
+  return { ok:true, recebidos: respRecebidos.data, enviados: respEnviados.data };
+}
+async function supabaseCriarRecado(d){
+  const texto = (d.texto||'').trim();
+  if(!texto) return { ok:false, erro:'Escreva uma mensagem.' };
+  const { data: destinatarioUsuario, error: erroDestinatario } = await clienteSupabase().from('usuarios').select('franquia').eq('usuario', d.destinatario).maybeSingle();
+  if(erroDestinatario) return { ok:false, erro:'Falha ao validar destinatário: ' + erroDestinatario.message };
+  if(!destinatarioUsuario) return { ok:false, erro:'Destinatário não encontrado.' };
+  if(d.atorPapel!=='admin' && destinatarioUsuario.franquia !== d.atorFranquia){
+    return { ok:false, erro:'Você só pode mandar recado pra colegas da sua própria Franquia.' };
+  }
+  const posX = 30 + Math.round(Math.random()*140);
+  const posY = 20 + Math.round(Math.random()*90);
+  const { data, error } = await clienteSupabase().from('recados').insert({
+    remetente: d.remetente, destinatario: d.destinatario, texto, pos_x: posX, pos_y: posY
+  }).select().single();
+  if(error) return { ok:false, erro:'Falha ao criar recado: ' + error.message };
+  return { ok:true, recado: data };
+}
+async function supabaseResponderRecado(d){
+  const { data: atual, error: erroAtual } = await clienteSupabase().from('recados').select('destinatario').eq('id', d.id).maybeSingle();
+  if(erroAtual) return { ok:false, erro:'Falha ao responder: ' + erroAtual.message };
+  if(!atual) return { ok:false, erro:'Recado não encontrado.' };
+  if(atual.destinatario !== d.usuarioLogado) return { ok:false, erro:'Você não pode responder um recado que não é seu.' };
+  const { data, error } = await clienteSupabase().from('recados').update({
+    resposta: (d.resposta||'').trim(), fechado_destinatario: true, respondido_em: new Date().toISOString()
+  }).eq('id', d.id).select().single();
+  if(error) return { ok:false, erro:'Falha ao responder: ' + error.message };
+  return { ok:true, recado: data };
+}
+async function supabaseFecharRecadoRemetente(d){
+  const { data: atual, error: erroAtual } = await clienteSupabase().from('recados').select('remetente').eq('id', d.id).maybeSingle();
+  if(erroAtual) return { ok:false, erro:'Falha ao fechar recado: ' + erroAtual.message };
+  if(!atual) return { ok:false, erro:'Recado não encontrado.' };
+  if(atual.remetente !== d.usuarioLogado) return { ok:false, erro:'Você não pode fechar um recado que não enviou.' };
+  const { error } = await clienteSupabase().from('recados').update({ fechado_remetente: true }).eq('id', d.id);
+  if(error) return { ok:false, erro:'Falha ao fechar recado: ' + error.message };
+  return { ok:true };
+}
+async function supabaseAtualizarPosicaoRecado(d){
+  const { data: atual, error: erroAtual } = await clienteSupabase().from('recados').select('destinatario').eq('id', d.id).maybeSingle();
+  if(erroAtual) return { ok:false, erro:'Falha ao mover recado: ' + erroAtual.message };
+  if(!atual) return { ok:false, erro:'Recado não encontrado.' };
+  if(atual.destinatario !== d.usuarioLogado) return { ok:false, erro:'Você só pode mover recados no seu próprio quadro.' };
+  const { error } = await clienteSupabase().from('recados').update({ pos_x: d.posX, pos_y: d.posY }).eq('id', d.id);
+  if(error) return { ok:false, erro:'Falha ao mover recado: ' + error.message };
+  return { ok:true };
 }
 
 // ---- Configurações (admin): identidade visual (logomarca + cores) ----
@@ -1042,6 +1205,11 @@ function apiCall(action, data){
           case 'excluirCampo': resultado = demoExcluirCampo(data); break;
           case 'listarUsuarios': resultado = demoListarUsuarios(); break;
           case 'listarFuncionarios': resultado = demoListarFuncionarios(); break;
+          case 'listarRecados': resultado = demoListarRecados(data); break;
+          case 'criarRecado': resultado = demoCriarRecado(data); break;
+          case 'responderRecado': resultado = demoResponderRecado(data); break;
+          case 'fecharRecadoRemetente': resultado = demoFecharRecadoRemetente(data); break;
+          case 'atualizarPosicaoRecado': resultado = demoAtualizarPosicaoRecado(data); break;
           case 'criarUsuario': resultado = demoCriarUsuario(data); break;
           case 'excluirUsuario': resultado = demoExcluirUsuario(data); break;
           case 'editarUsuario': resultado = demoEditarUsuario(data); break;
@@ -1075,6 +1243,11 @@ function apiCall(action, data){
     case 'excluirCampo': return comTratativaDeErro(()=>supabaseExcluirCampo(data));
     case 'listarUsuarios': return comTratativaDeErro(()=>supabaseListarUsuarios());
     case 'listarFuncionarios': return comTratativaDeErro(()=>supabaseListarFuncionarios());
+    case 'listarRecados': return comTratativaDeErro(()=>supabaseListarRecados(data));
+    case 'criarRecado': return comTratativaDeErro(()=>supabaseCriarRecado(data));
+    case 'responderRecado': return comTratativaDeErro(()=>supabaseResponderRecado(data));
+    case 'fecharRecadoRemetente': return comTratativaDeErro(()=>supabaseFecharRecadoRemetente(data));
+    case 'atualizarPosicaoRecado': return comTratativaDeErro(()=>supabaseAtualizarPosicaoRecado(data));
     case 'criarUsuario': return comTratativaDeErro(()=>supabaseCriarUsuario(data));
     case 'excluirUsuario': return comTratativaDeErro(()=>supabaseExcluirUsuario(data));
     case 'editarUsuario': return comTratativaDeErro(()=>supabaseEditarUsuario(data));
@@ -1121,7 +1294,12 @@ function estadoInicial(){
     funcionarios:null,
     calendarioAno:null,
     calendarioMes:null,
-    calendarioDiaSelecionado:null
+    calendarioDiaSelecionado:null,
+    calendarioVisualizacao:'mensal',
+    calendarioDiaRef:null,
+    recados:null,
+    modalNovoRecado:null,
+    recadoRespondendo:null
   };
 }
 let estado = estadoInicial();
@@ -1311,7 +1489,7 @@ function viewLogin(){
 }
 
 function viewShell(){
-  const abaAtual = (estado.abaAtiva === 'dashboard' || estado.abaAtiva === 'configuracoes' || estado.abaAtiva === 'calendario') ? null : (estado.schema||[]).find(a=>a.nome===estado.abaAtiva);
+  const abaAtual = (estado.abaAtiva === 'dashboard' || estado.abaAtiva === 'configuracoes' || estado.abaAtiva === 'calendario' || estado.abaAtiva === 'cards') ? null : (estado.schema||[]).find(a=>a.nome===estado.abaAtiva);
   return `
     <div class="app-shell">
       ${barraProgressoGlobal()}
@@ -1331,10 +1509,11 @@ function viewShell(){
           <button class="aba-lateral ${estado.abaAtiva==='calendario'?'ativa':''}" onclick="app.selecionarAba('calendario')">📅 Calendário</button>
           ${(estado.schema||[]).map(a=>`<button class="aba-lateral ${estado.abaAtiva===a.nome?'ativa':''}" onclick="app.selecionarAba('${escapeHtml(a.nome)}')">📁 ${escapeHtml(a.nome)}</button>`).join('')}
           <button class="aba-lateral ${estado.abaAtiva==='dashboard'?'ativa':''}" onclick="app.selecionarAba('dashboard')">📊 Dashboard</button>
+          <button class="aba-lateral ${estado.abaAtiva==='cards'?'ativa':''}" onclick="app.abrirCards()">🗒️ Cards</button>
           ${(estado.papel==='admin'||estado.papel==='gerente') ? `<button class="aba-lateral ${estado.abaAtiva==='configuracoes'?'ativa':''}" onclick="app.abrirConfiguracoes()">⚙️ Configurações</button>` : ''}
         </nav>
         <main class="conteudo">
-          ${estado.abaAtiva==='dashboard' ? viewDashboard() : estado.abaAtiva==='configuracoes' ? viewConfiguracoes() : estado.abaAtiva==='calendario' ? viewCalendario() : (abaAtual ? viewTabela(abaAtual) : '<p>Aba não encontrada.</p>')}
+          ${estado.abaAtiva==='dashboard' ? viewDashboard() : estado.abaAtiva==='configuracoes' ? viewConfiguracoes() : estado.abaAtiva==='calendario' ? viewCalendario() : estado.abaAtiva==='cards' ? viewCards() : (abaAtual ? viewTabela(abaAtual) : '<p>Aba não encontrada.</p>')}
         </main>
       </div>
       ${rodapeApp()}
@@ -1445,6 +1624,27 @@ function garantirMesCalendario(){
     estado.calendarioAno = hoje.getFullYear();
     estado.calendarioMes = hoje.getMonth()+1;
   }
+  if(estado.calendarioDiaRef==null){
+    estado.calendarioDiaRef = new Date().getDate();
+  }
+}
+// data de referência usada pelas visualizações Semanal e Diária
+function obterDataReferenciaCalendario(){
+  garantirMesCalendario();
+  return new Date(estado.calendarioAno, estado.calendarioMes-1, estado.calendarioDiaRef);
+}
+function definirReferenciaCalendario(data){
+  estado.calendarioAno = data.getFullYear();
+  estado.calendarioMes = data.getMonth()+1;
+  estado.calendarioDiaRef = data.getDate();
+}
+function formatarChaveDia(data){
+  return `${String(data.getDate()).padStart(2,'0')}/${String(data.getMonth()+1).padStart(2,'0')}/${data.getFullYear()}`;
+}
+function inicioDaSemana(data){
+  const d = new Date(data);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
 }
 // agrupa todas as ações (de todos os registros visíveis) por dia "dd/mm/aaaa"
 function agruparAcoesPorDia(registros, colunaHistorico){
@@ -1461,15 +1661,40 @@ function agruparAcoesPorDia(registros, colunaHistorico){
   });
   return mapa;
 }
-
-function viewCalendario(){
-  garantirMesCalendario();
+function dadosBaseCalendario(){
   const nomeAbaPrincipal = (estado.schema && estado.schema[0]) ? estado.schema[0].nome : 'Acompanhamento';
   const infoAba = (estado.schema||[]).find(a=>a.nome===nomeAbaPrincipal);
   const registros = estado.cache[nomeAbaPrincipal] || [];
   const colunaHistorico = infoAba ? infoAba.colunas.find(c=>c.tipo==='texto_longo') : null;
-  const mapaAcoes = agruparAcoesPorDia(registros, colunaHistorico);
+  return { mapaAcoes: agruparAcoesPorDia(registros, colunaHistorico) };
+}
 
+function abasVisualizacaoCalendario(){
+  const modos = [['mensal','Mensal'],['anual','Anual'],['semanal','Semanal'],['diario','Diário']];
+  return `<div class="abas-visualizacao-calendario">
+    ${modos.map(([chave,rotulo])=>`<button class="aba-visualizacao ${estado.calendarioVisualizacao===chave?'ativa':''}" onclick="app.mudarVisualizacaoCalendario('${chave}')">${rotulo}</button>`).join('')}
+  </div>`;
+}
+
+function viewCalendario(){
+  garantirMesCalendario();
+  if(!estado.calendarioVisualizacao) estado.calendarioVisualizacao = 'mensal';
+  return `
+    <div class="cabecalho-conteudo">
+      <h2>Calendário</h2>
+      ${barraAtualizacao()}
+    </div>
+    ${estado.erroAtualizacao ? `<div class="aviso-discreto">${escapeHtml(estado.erroAtualizacao)}</div>` : ''}
+    ${abasVisualizacaoCalendario()}
+    ${estado.calendarioVisualizacao==='anual' ? viewCalendarioAnual()
+      : estado.calendarioVisualizacao==='semanal' ? viewCalendarioSemanal()
+      : estado.calendarioVisualizacao==='diario' ? viewCalendarioDiario()
+      : viewCalendarioMensal()}
+  `;
+}
+
+function viewCalendarioMensal(){
+  const { mapaAcoes } = dadosBaseCalendario();
   const ano = estado.calendarioAno, mes = estado.calendarioMes;
   const primeiroDiaSemana = new Date(ano, mes-1, 1).getDay();
   const diasNoMes = new Date(ano, mes, 0).getDate();
@@ -1480,15 +1705,9 @@ function viewCalendario(){
   for(let d=1; d<=diasNoMes; d++) celulas.push(d);
   while(celulas.length % 7 !== 0) celulas.push(null);
 
-  const hoje = new Date();
-  const hojeStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`;
+  const hojeStr = formatarChaveDia(new Date());
 
   return `
-    <div class="cabecalho-conteudo">
-      <h2>Calendário</h2>
-      ${barraAtualizacao()}
-    </div>
-    ${estado.erroAtualizacao ? `<div class="aviso-discreto">${escapeHtml(estado.erroAtualizacao)}</div>` : ''}
     <div class="cartao-calendario">
       <div class="topo-calendario">
         <button type="button" class="botao-secundario" onclick="app.mudarMesCalendario(-1)">‹ Anterior</button>
@@ -1513,6 +1732,131 @@ function viewCalendario(){
   `;
 }
 
+function viewCalendarioAnual(){
+  const { mapaAcoes } = dadosBaseCalendario();
+  const ano = estado.calendarioAno;
+  const nomesDiasSemanaCurto = ['D','S','T','Q','Q','S','S'];
+
+  const mesesHtml = nomesMeses().map((nomeMes, indiceMes)=>{
+    const mesNum = indiceMes+1;
+    const primeiroDiaSemana = new Date(ano, indiceMes, 1).getDay();
+    const diasNoMes = new Date(ano, mesNum, 0).getDate();
+    const celulas = [];
+    for(let i=0;i<primeiroDiaSemana;i++) celulas.push(null);
+    for(let d=1; d<=diasNoMes; d++) celulas.push(d);
+    while(celulas.length % 7 !== 0) celulas.push(null);
+    const hojeStr = formatarChaveDia(new Date());
+    return `<div class="mini-mes-anual">
+      <h4>${escapeHtml(nomeMes)}</h4>
+      <div class="grade-mini-mes">
+        ${nomesDiasSemanaCurto.map(n=>`<div class="mini-cabecalho-dia">${n}</div>`).join('')}
+        ${celulas.map(d=>{
+          if(d===null) return '<div class="mini-dia vazio-dia"></div>';
+          const chave = `${String(d).padStart(2,'0')}/${String(mesNum).padStart(2,'0')}/${ano}`;
+          const qtd = (mapaAcoes[chave]||[]).length;
+          const ehHoje = chave===hojeStr;
+          return `<div class="mini-dia ${ehHoje?'dia-hoje':''} ${qtd>0?'dia-com-acoes':''}" ${qtd>0?`onclick="app.irParaDiaCalendario(${ano},${mesNum},${d})"`:''} title="${qtd>0?qtd+' ação(ões)':''}">
+            ${d}${qtd>0?'<span class="mini-ponto"></span>':''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="cartao-calendario">
+      <div class="topo-calendario">
+        <button type="button" class="botao-secundario" onclick="app.mudarAnoCalendario(-1)">‹ Anterior</button>
+        <h3>${ano}</h3>
+        <button type="button" class="botao-secundario" onclick="app.mudarAnoCalendario(1)">Próximo ›</button>
+      </div>
+      <div class="grade-anual">${mesesHtml}</div>
+    </div>
+  `;
+}
+
+// horas mostradas na grade estilo Google Calendar (0h à 23h)
+const HORAS_GRADE_CALENDARIO = Array.from({length:24}, (_,i)=>i);
+const ALTURA_HORA_CALENDARIO = 48; // px por hora
+
+function renderizarEventosDoDia(chaveDia, mapaAcoes){
+  const entradas = mapaAcoes[chaveDia] || [];
+  return entradas.map(({reg,bloco},i)=>{
+    const partesHora = (bloco.dataHora||'').split(' ')[1] || '00:00';
+    const [h,m] = partesHora.split(':').map(Number);
+    const topo = (h + (m||0)/60) * ALTURA_HORA_CALENDARIO;
+    const cor = corPaleta(0);
+    return `<div class="evento-calendario" style="top:${topo}px;--cor-evento:${cor}" onclick="app.abrirDiaCalendario('${chaveDia}')" title="${escapeHtml(bloco.linhasTexto.join(' '))}">
+      <span class="hora-evento-calendario mono">${escapeHtml(partesHora)}</span>
+      <span class="texto-evento-calendario">${escapeHtml(reg['Franquia']||'')} — ${escapeHtml(bloco.linhasTexto[0]||'')}</span>
+    </div>`;
+  }).join('');
+}
+
+function gradeHorariaCalendario(colunas){
+  // colunas: [{ chave:'dd/mm/aaaa', rotulo:'Seg 18' }, ...]
+  return `
+    <div class="grade-horaria-calendario">
+      <div class="coluna-horas">
+        <div class="celula-cabecalho-horas"></div>
+        ${HORAS_GRADE_CALENDARIO.map(h=>`<div class="rotulo-hora" style="height:${ALTURA_HORA_CALENDARIO}px">${String(h).padStart(2,'0')}:00</div>`).join('')}
+      </div>
+      ${colunas.map(col=>`
+        <div class="coluna-dia-horario">
+          <div class="celula-cabecalho-dia-horario ${col.ehHoje?'dia-hoje':''}">${escapeHtml(col.rotulo)}</div>
+          <div class="corpo-coluna-dia-horario" style="height:${24*ALTURA_HORA_CALENDARIO}px">
+            ${HORAS_GRADE_CALENDARIO.map(h=>`<div class="linha-hora" style="height:${ALTURA_HORA_CALENDARIO}px"></div>`).join('')}
+            ${renderizarEventosDoDia(col.chave, dadosBaseCalendario().mapaAcoes)}
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+function viewCalendarioSemanal(){
+  const dataRef = obterDataReferenciaCalendario();
+  const inicio = inicioDaSemana(dataRef);
+  const nomesDiasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const hojeStr = formatarChaveDia(new Date());
+  const colunas = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(inicio);
+    d.setDate(d.getDate()+i);
+    const chave = formatarChaveDia(d);
+    colunas.push({ chave, rotulo:`${nomesDiasSemana[i]} ${d.getDate()}`, ehHoje: chave===hojeStr });
+  }
+  const fim = new Date(inicio); fim.setDate(fim.getDate()+6);
+  return `
+    <div class="cartao-calendario">
+      <div class="topo-calendario">
+        <button type="button" class="botao-secundario" onclick="app.mudarSemanaCalendario(-1)">‹ Anterior</button>
+        <h3>${inicio.getDate()} de ${escapeHtml(nomesMeses()[inicio.getMonth()])} — ${fim.getDate()} de ${escapeHtml(nomesMeses()[fim.getMonth()])}</h3>
+        <button type="button" class="botao-secundario" onclick="app.mudarSemanaCalendario(1)">Próximo ›</button>
+      </div>
+      ${gradeHorariaCalendario(colunas)}
+    </div>
+    ${estado.calendarioDiaSelecionado ? viewModalDiaCalendario(dadosBaseCalendario().mapaAcoes[estado.calendarioDiaSelecionado]||[]) : ''}
+  `;
+}
+
+function viewCalendarioDiario(){
+  const dataRef = obterDataReferenciaCalendario();
+  const chave = formatarChaveDia(dataRef);
+  const nomesDiasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const coluna = { chave, rotulo:`${nomesDiasSemana[dataRef.getDay()]}, ${dataRef.getDate()} de ${nomesMeses()[dataRef.getMonth()]}`, ehHoje: chave===formatarChaveDia(new Date()) };
+  return `
+    <div class="cartao-calendario">
+      <div class="topo-calendario">
+        <button type="button" class="botao-secundario" onclick="app.mudarDiaCalendario(-1)">‹ Anterior</button>
+        <h3>${escapeHtml(coluna.rotulo)}</h3>
+        <button type="button" class="botao-secundario" onclick="app.mudarDiaCalendario(1)">Próximo ›</button>
+      </div>
+      ${gradeHorariaCalendario([coluna])}
+    </div>
+    ${estado.calendarioDiaSelecionado ? viewModalDiaCalendario(dadosBaseCalendario().mapaAcoes[estado.calendarioDiaSelecionado]||[]) : ''}
+  `;
+}
+
 function viewModalDiaCalendario(entradas){
   return `
     <div class="sobreposicao" onclick="app.fecharModalSeClicarForaDiaCalendario(event)">
@@ -1520,24 +1864,107 @@ function viewModalDiaCalendario(entradas){
         <h3>Ações em ${escapeHtml(estado.calendarioDiaSelecionado)}</h3>
         <div class="lista-acoes" style="margin-top:14px">
           ${entradas.length===0 ? '<p class="vazio-inline">Nenhuma ação nesse dia.</p>' : entradas.map(({reg,bloco})=>{
-            const meta = [];
-            meta.push(`Responsável: ${escapeHtml(reg['Responsável']||'—')}`);
-            if(bloco.lancadoPor) meta.push(`Lançado por: ${escapeHtml(bloco.lancadoPor)}`);
-            if(bloco.equipe) meta.push(`Equipe: ${escapeHtml(bloco.equipe)}`);
-            return `<div class="bloco-acao">
-              <div class="cabecalho-bloco-calendario">
-                <span class="etiqueta" style="--cor-etiqueta:${corPaleta(0)}">${escapeHtml(reg['Franquia']||'—')}</span>
-                <span class="mono" style="font-size:11px;color:var(--ink-soft)">${escapeHtml((bloco.dataHora||'').split(' ')[1]||'')}</span>
-              </div>
-              <div style="font-weight:600;margin:4px 0 2px">${escapeHtml(reg['Assunto']||'')}</div>
-              <div class="texto-bloco-acao">${escapeHtml(bloco.linhasTexto.join('\n'))}</div>
-              <div class="meta-bloco-acao">${meta.join(' · ')}</div>
+            const metaExtra = `Responsável: ${escapeHtml(reg['Responsável']||'—')}`;
+            return `<div>
+              <div style="font-weight:600;margin:0 0 2px">${escapeHtml(reg['Franquia']||'—')} — ${escapeHtml(reg['Assunto']||'')}</div>
+              <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 4px">${metaExtra}</p>
+              ${renderizarBlocoAcao(bloco, null, reg)}
             </div>`;
           }).join('')}
         </div>
         <div class="acoes-modal">
           <button type="button" class="botao-secundario" onclick="app.fecharDiaCalendario()">Fechar</button>
         </div>
+      </div>
+    </div>`;
+}
+
+/* ============================================================================
+   CARDS — quadro de post-its entre colegas. Cada usuário tem uma cor própria
+   (definida em Configurações → Usuários); recado endereçado a alguém aparece
+   no quadro dessa pessoa, arrastável; ela responde e fecha; quem mandou
+   continua vendo (com a resposta) até fechar também do lado dele.
+   ========================================================================== */
+function corPostItUsuario(usuario){
+  const f = (estado.funcionarios||[]).find(x=>x.usuario===usuario);
+  return (f && f.cor_post_it) || COR_POST_IT_PADRAO;
+}
+
+function viewCards(){
+  const recebidos = (estado.recados && estado.recados.recebidos) || [];
+  const enviados = (estado.recados && estado.recados.enviados) || [];
+  return `
+    <div class="cabecalho-conteudo">
+      <h2>Cards</h2>
+      <div class="acoes-cabecalho">
+        ${barraAtualizacao()}
+        <button class="botao-primario" onclick="app.abrirNovoRecado()">+ Novo recado</button>
+      </div>
+    </div>
+    ${estado.erroAtualizacao ? `<div class="aviso-discreto">${escapeHtml(estado.erroAtualizacao)}</div>` : ''}
+    <h3 style="margin:6px 0 10px">Meu quadro</h3>
+    <div class="quadro-recados" id="quadroRecados">
+      ${recebidos.length===0 ? '<p class="vazio-inline" style="padding:22px">Nenhum recado por aqui no momento.</p>' : recebidos.map(r=>viewPostIt(r)).join('')}
+    </div>
+    <h3 style="margin:26px 0 10px">Enviados</h3>
+    <div class="lista-recados-enviados">
+      ${enviados.length===0 ? '<p class="vazio-inline">Você não tem recados pendentes enviados.</p>' : enviados.map(r=>viewRecadoEnviado(r)).join('')}
+    </div>
+    ${estado.modalNovoRecado ? viewModalNovoRecado() : ''}
+  `;
+}
+
+function viewPostIt(r){
+  const cor = corPostItUsuario(r.remetente);
+  const respondendo = estado.recadoRespondendo === r.id;
+  return `<div class="post-it" style="left:${r.pos_x}px; top:${r.pos_y}px; background:${escapeHtml(cor)}" data-id="${escapeHtml(r.id)}" onmousedown="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')" ontouchstart="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')">
+    <div class="post-it-remetente">${escapeHtml(r.remetente)}</div>
+    <div class="post-it-texto">${escapeHtml(r.texto)}</div>
+    ${respondendo ? `
+      <textarea class="post-it-resposta" id="respostaRecado_${escapeHtml(r.id)}" placeholder="Escreva sua resposta…" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()"></textarea>
+      <div class="post-it-acoes">
+        <button type="button" class="botao-secundario" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.cancelarRespostaPostIt()">Cancelar</button>
+        <button type="button" class="botao-primario" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.enviarRespostaPostIt('${escapeHtml(r.id)}')">Responder e fechar</button>
+      </div>
+    ` : `
+      <button type="button" class="post-it-botao-responder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.abrirRespostaPostIt('${escapeHtml(r.id)}')">Responder e fechar</button>
+    `}
+  </div>`;
+}
+
+function viewRecadoEnviado(r){
+  return `<div class="cartao-recado-enviado">
+    <div style="font-weight:600">Para: ${escapeHtml(r.destinatario)}</div>
+    <div class="texto-bloco-acao" style="margin:4px 0">${escapeHtml(r.texto)}</div>
+    ${r.resposta
+      ? `<div class="resposta-recado-enviado"><strong>Resposta:</strong> ${escapeHtml(r.resposta)}</div>
+         <button type="button" class="botao-secundario" style="margin-top:8px" onclick="app.fecharRecadoEnviado('${escapeHtml(r.id)}')">Fechar</button>`
+      : `<p class="vazio-inline">Aguardando resposta…</p>`}
+  </div>`;
+}
+
+function viewModalNovoRecado(){
+  const opcoes = (estado.funcionarios||[]).filter(f=>f.usuario!==estado.usuario && (estado.papel==='admin' || f.franquia===estado.franquia));
+  return `
+    <div class="sobreposicao" onclick="app.fecharModalSeClicarForaNovoRecado(event)">
+      <div class="modal-caixa">
+        <h3>Novo recado</h3>
+        <form onsubmit="app.salvarNovoRecado(event)">
+          <label>Para
+            <select id="destinatarioNovoRecado" required>
+              <option value="">— selecione —</option>
+              ${opcoes.map(f=>`<option value="${escapeHtml(f.usuario)}">${escapeHtml(f.usuario)}</option>`).join('')}
+            </select>
+          </label>
+          <label>Mensagem<textarea id="textoNovoRecado" rows="4" required placeholder="Escreva o recado…"></textarea></label>
+          ${opcoes.length===0 ? '<p style="font-size:12px;color:var(--ink-soft)">Nenhum colega disponível pra receber recados ainda.</p>' : ''}
+          ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
+          ${estado.enviando ? barraProgresso() : ''}
+          <div class="acoes-modal">
+            <button type="button" class="botao-secundario" onclick="app.fecharNovoRecado()" ${estado.enviando?'disabled':''}>Cancelar</button>
+            <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Enviando…':'Enviar recado'}</button>
+          </div>
+        </form>
       </div>
     </div>`;
 }
@@ -1614,13 +2041,39 @@ function parseBlocosAcao(valor){
   return blocos;
 }
 
-function renderizarBlocoAcao(bloco, corSituacao){
+// monta o texto que vai ser compartilhado (WhatsApp/Email) a partir de um
+// bloco de ação específico + o registro (Franquia/Assunto/Responsável) dele
+function montarTextoCompartilhamento(reg, bloco){
+  const linhas = [
+    `${reg['Franquia']||''} — ${reg['Assunto']||''}`,
+    `Data: ${bloco.dataHora}`,
+    `Responsável: ${reg['Responsável']||'—'}`,
+    '',
+    bloco.linhasTexto.join('\n')
+  ];
+  if(bloco.lancadoPor) linhas.push(`Lançado por: ${bloco.lancadoPor}`);
+  if(bloco.equipe) linhas.push(`Equipe: ${bloco.equipe}`);
+  return linhas.join('\n');
+}
+function botoesEnviarBloco(reg, bloco){
+  const texto = montarTextoCompartilhamento(reg, bloco);
+  const assunto = `${reg['Franquia']||''} — ${reg['Assunto']||''}`;
+  return `<div class="botoes-enviar-bloco">
+    <button type="button" class="botao-icone" title="Enviar por WhatsApp" data-texto="${encodeURIComponent(texto)}" onclick="app.enviarBlocoWhatsApp(this)">📱</button>
+    <button type="button" class="botao-icone" title="Enviar por e-mail" data-assunto="${encodeURIComponent(assunto)}" data-corpo="${encodeURIComponent(texto)}" onclick="app.enviarBlocoEmail(this)">✉️</button>
+  </div>`;
+}
+
+function renderizarBlocoAcao(bloco, corSituacao, reg){
   const estilo = corSituacao ? ` style="border-left-color:${corSituacao}"` : '';
   const metaPartes = [];
   if(bloco.lancadoPor) metaPartes.push(`Lançado por: ${escapeHtml(bloco.lancadoPor)}`);
   if(bloco.equipe) metaPartes.push(`Equipe: ${escapeHtml(bloco.equipe)}`);
   return `<div class="bloco-acao"${estilo}>
-    <div class="data-bloco-acao mono">[${escapeHtml(bloco.dataHora)}]</div>
+    <div class="cabecalho-bloco-acao">
+      <div class="data-bloco-acao mono">[${escapeHtml(bloco.dataHora)}]</div>
+      ${reg ? botoesEnviarBloco(reg, bloco) : ''}
+    </div>
     <div class="texto-bloco-acao">${escapeHtml(bloco.linhasTexto.join('\n'))}</div>
     ${metaPartes.length ? `<div class="meta-bloco-acao">${metaPartes.join(' · ')}</div>` : ''}
   </div>`;
@@ -1632,12 +2085,12 @@ function celulaAcaoFormatada(coluna, reg, corSituacao){
   const blocos = parseBlocosAcao(valor);
   if(blocos.length===0) return '<span class="vazio-inline">—</span>';
   if(blocos.length <= 2){
-    return `<div class="lista-acoes">${blocos.map(b=>renderizarBlocoAcao(b, corSituacao)).join('')}</div>`;
+    return `<div class="lista-acoes">${blocos.map(b=>renderizarBlocoAcao(b, corSituacao, reg)).join('')}</div>`;
   }
   const expandido = estado.expandidos.has(String(reg.ID));
   const blocosParaMostrar = expandido ? blocos : blocos.slice(-2);
   const restantes = blocos.length - 2;
-  return `<div class="lista-acoes">${blocosParaMostrar.map(b=>renderizarBlocoAcao(b, corSituacao)).join('')}</div>
+  return `<div class="lista-acoes">${blocosParaMostrar.map(b=>renderizarBlocoAcao(b, corSituacao, reg)).join('')}</div>
     <button type="button" class="link-ver-mais" onclick="app.alternarExpandir('${escapeHtml(reg.ID)}')">
       ${expandido ? 'ver menos' : `ver mais (${restantes} ${restantes===1?'ação anterior':'ações anteriores'})`}
     </button>`;
@@ -2060,6 +2513,7 @@ function viewModalNovoUsuario(){
           ${ehGerente
             ? `<p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 0">Como gerente, você só pode criar Colaboradores da sua própria Franquia (${escapeHtml(estado.franquia||'')}).</p>`
             : `<p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 0">Deixe a Franquia em branco se o usuário deve ver e lançar registros de todas as Franquias. Se o papel escolhido for Gerente, a Franquia passa a ser obrigatória.</p>`}
+          <label>Cor do post-it (aba Cards)<input type="color" id="corPostItNovoUsuario" value="${COR_POST_IT_PADRAO}"></label>
           ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
           ${estado.enviando ? barraProgresso() : ''}
           <div class="acoes-modal">
@@ -2073,7 +2527,7 @@ function viewModalNovoUsuario(){
 
 function viewModalEditarUsuario(){
   const ehGerente = estado.papel === 'gerente';
-  const { usuario, papel, franquia } = estado.modalEditarUsuario;
+  const { usuario, papel, franquia, cor_post_it } = estado.modalEditarUsuario;
   const opcoesFranquia = (estado.configOpcoes && estado.configOpcoes['Franquia']) || [];
   return `
     <div class="sobreposicao" onclick="app.fecharModalSeClicarForaEditarUsuario(event)">
@@ -2094,6 +2548,7 @@ function viewModalEditarUsuario(){
               ${opcoesFranquia.map(op=>`<option value="${escapeHtml(op)}" ${op===franquia?'selected':''}>${escapeHtml(op)}</option>`).join('')}
             </select>
           </label>
+          <label>Cor do post-it (aba Cards)<input type="color" id="corPostItEditarUsuario" value="${cor_post_it||COR_POST_IT_PADRAO}"></label>
           ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
           ${estado.enviando ? barraProgresso() : ''}
           <div class="acoes-modal">
@@ -2210,6 +2665,43 @@ const app = {
   },
   fecharModalSeClicarForaDiaCalendario(e){
     if(e.target.classList.contains('sobreposicao')) app.fecharDiaCalendario();
+  },
+  mudarVisualizacaoCalendario(modo){
+    estado.calendarioVisualizacao = modo;
+    renderizar();
+  },
+  mudarAnoCalendario(delta){
+    garantirMesCalendario();
+    estado.calendarioAno += delta;
+    renderizar();
+  },
+  mudarSemanaCalendario(delta){
+    const d = obterDataReferenciaCalendario();
+    d.setDate(d.getDate() + delta*7);
+    definirReferenciaCalendario(d);
+    renderizar();
+  },
+  mudarDiaCalendario(delta){
+    const d = obterDataReferenciaCalendario();
+    d.setDate(d.getDate() + delta);
+    definirReferenciaCalendario(d);
+    renderizar();
+  },
+  irParaDiaCalendario(ano, mes, dia){
+    estado.calendarioAno = ano;
+    estado.calendarioMes = mes;
+    estado.calendarioDiaRef = dia;
+    estado.calendarioVisualizacao = 'diario';
+    renderizar();
+  },
+  enviarBlocoWhatsApp(botao){
+    const texto = botao.getAttribute('data-texto');
+    window.open('https://wa.me/?text=' + texto, '_blank');
+  },
+  enviarBlocoEmail(botao){
+    const assunto = botao.getAttribute('data-assunto');
+    const corpo = botao.getAttribute('data-corpo');
+    window.location.href = 'mailto:?subject=' + assunto + '&body=' + corpo;
   },
 
   async atualizarDados(){
@@ -2416,6 +2908,138 @@ const app = {
     renderizar();
   },
 
+  async abrirCards(){
+    estado.abaAtiva = 'cards';
+    estado.erroAtualizacao = null;
+    renderizar();
+    estado.carregando = true;
+    renderizar();
+    const resp = await apiCall('listarRecados', { usuario: estado.usuario });
+    estado.carregando = false;
+    if(resp.ok){
+      estado.recados = { recebidos: resp.recebidos, enviados: resp.enviados };
+      estado.erroAtualizacao = null;
+    } else {
+      estado.erroAtualizacao = resp.erro || 'Não foi possível carregar os recados.';
+    }
+    renderizar();
+  },
+  abrirNovoRecado(){
+    estado.modalNovoRecado = true;
+    estado.configErro = null;
+    renderizar();
+  },
+  fecharNovoRecado(){
+    estado.modalNovoRecado = null;
+    renderizar();
+  },
+  fecharModalSeClicarForaNovoRecado(e){
+    if(e.target.classList.contains('sobreposicao')) app.fecharNovoRecado();
+  },
+  async salvarNovoRecado(e){
+    e.preventDefault();
+    const destinatario = document.getElementById('destinatarioNovoRecado').value;
+    const texto = document.getElementById('textoNovoRecado').value.trim();
+    if(!destinatario || !texto) return;
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('criarRecado', { remetente: estado.usuario, destinatario, texto, atorPapel: estado.papel, atorFranquia: estado.franquia });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.modalNovoRecado = null;
+      estado.configErro = null;
+      estado.recados = estado.recados || { recebidos:[], enviados:[] };
+      estado.recados.enviados = [...estado.recados.enviados, resp.recado];
+    } else {
+      estado.configErro = resp.erro || 'Não foi possível enviar o recado.';
+    }
+    renderizar();
+  },
+  abrirRespostaPostIt(id){
+    estado.recadoRespondendo = id;
+    renderizar();
+  },
+  cancelarRespostaPostIt(){
+    estado.recadoRespondendo = null;
+    renderizar();
+  },
+  async enviarRespostaPostIt(id){
+    const campo = document.getElementById('respostaRecado_'+id);
+    const resposta = campo ? campo.value.trim() : '';
+    estado.enviando = true;
+    renderizar();
+    const resp = await apiCall('responderRecado', { id, resposta, usuarioLogado: estado.usuario });
+    estado.enviando = false;
+    if(resp.ok){
+      estado.recados.recebidos = (estado.recados.recebidos||[]).filter(r=>r.id!==id);
+      estado.recadoRespondendo = null;
+    } else {
+      alert('Não foi possível responder: ' + (resp.erro || 'erro desconhecido.'));
+    }
+    renderizar();
+  },
+  async fecharRecadoEnviado(id){
+    const resp = await apiCall('fecharRecadoRemetente', { id, usuarioLogado: estado.usuario });
+    if(resp.ok){
+      estado.recados.enviados = (estado.recados.enviados||[]).filter(r=>r.id!==id);
+      renderizar();
+    } else {
+      alert('Não foi possível fechar: ' + (resp.erro || 'erro desconhecido.'));
+    }
+  },
+
+  // arrastar-e-soltar do post-it: manipula o DOM diretamente durante o
+  // arraste (fluido, sem re-renderizar tudo a cada pixel) e só persiste a
+  // posição final no banco quando soltar
+  iniciarArrastePostIt(e, id){
+    e.preventDefault();
+    const elemento = document.querySelector(`.post-it[data-id="${id}"]`);
+    if(!elemento) return;
+    const evento = e.touches ? e.touches[0] : e;
+    const retanguloElemento = elemento.getBoundingClientRect();
+    const retanguloQuadro = elemento.parentElement.getBoundingClientRect();
+    estado._arraste = {
+      id, elemento,
+      offsetX: evento.clientX - retanguloElemento.left,
+      offsetY: evento.clientY - retanguloElemento.top,
+      quadroLeft: retanguloQuadro.left,
+      quadroTop: retanguloQuadro.top,
+      novoX: null, novoY: null
+    };
+    document.addEventListener('mousemove', app._moverPostIt);
+    document.addEventListener('mouseup', app._soltarPostIt);
+    document.addEventListener('touchmove', app._moverPostIt, { passive:false });
+    document.addEventListener('touchend', app._soltarPostIt);
+  },
+  _moverPostIt(e){
+    const arraste = estado._arraste;
+    if(!arraste) return;
+    e.preventDefault();
+    const evento = e.touches ? e.touches[0] : e;
+    let novoX = evento.clientX - arraste.quadroLeft - arraste.offsetX;
+    let novoY = evento.clientY - arraste.quadroTop - arraste.offsetY;
+    novoX = Math.max(0, novoX);
+    novoY = Math.max(0, novoY);
+    arraste.elemento.style.left = novoX + 'px';
+    arraste.elemento.style.top = novoY + 'px';
+    arraste.novoX = novoX;
+    arraste.novoY = novoY;
+  },
+  async _soltarPostIt(){
+    const arraste = estado._arraste;
+    document.removeEventListener('mousemove', app._moverPostIt);
+    document.removeEventListener('mouseup', app._soltarPostIt);
+    document.removeEventListener('touchmove', app._moverPostIt);
+    document.removeEventListener('touchend', app._soltarPostIt);
+    estado._arraste = null;
+    if(!arraste || arraste.novoX===null) return; // só clicou, não arrastou de verdade
+    const resp = await apiCall('atualizarPosicaoRecado', { id: arraste.id, posX: arraste.novoX, posY: arraste.novoY, usuarioLogado: estado.usuario });
+    if(resp.ok){
+      const r = (estado.recados && estado.recados.recebidos || []).find(x=>x.id===arraste.id);
+      if(r){ r.pos_x = arraste.novoX; r.pos_y = arraste.novoY; }
+    }
+  },
+
   selecionarCategoriaConfig(categoria){
     estado.configCategoria = categoria;
     estado.configErro = null;
@@ -2529,6 +3153,7 @@ const app = {
     const senha = document.getElementById('senhaNovoUsuario').value;
     const papel = document.getElementById('papelNovoUsuario').value;
     const franquia = document.getElementById('franquiaNovoUsuario').value || null;
+    const corPostIt = document.getElementById('corPostItNovoUsuario').value;
     if(papel==='gerente' && !franquia){
       estado.configErro = 'Um Gerente precisa estar vinculado a uma Franquia — sem isso, ele veria os acompanhamentos de todas.';
       renderizar();
@@ -2536,7 +3161,7 @@ const app = {
     }
     estado.enviando = true;
     renderizar();
-    const resp = await apiCall('criarUsuario', { usuario, senha, papel, franquia, atorPapel: estado.papel, atorFranquia: estado.franquia });
+    const resp = await apiCall('criarUsuario', { usuario, senha, papel, franquia, corPostIt, atorPapel: estado.papel, atorFranquia: estado.franquia });
     estado.enviando = false;
     if(resp.ok){
       estado.modalNovoUsuario = null;
@@ -2576,7 +3201,7 @@ const app = {
   abrirEditarUsuario(usuario){
     const u = (estado.configUsuarios||[]).find(x=>x.usuario===usuario);
     if(!u) return;
-    estado.modalEditarUsuario = { usuario:u.usuario, papel:u.papel, franquia:u.franquia||null };
+    estado.modalEditarUsuario = { usuario:u.usuario, papel:u.papel, franquia:u.franquia||null, cor_post_it:u.cor_post_it||null };
     estado.configErro = null;
     renderizar();
   },
@@ -2593,6 +3218,7 @@ const app = {
     const papel = document.getElementById('papelEditarUsuario').value;
     const franquia = document.getElementById('franquiaEditarUsuario').value || null;
     const novaSenha = document.getElementById('senhaEditarUsuario').value;
+    const corPostIt = document.getElementById('corPostItEditarUsuario').value;
     if(papel==='gerente' && !franquia){
       estado.configErro = 'Um Gerente precisa estar vinculado a uma Franquia — sem isso, ele veria os acompanhamentos de todas.';
       renderizar();
@@ -2600,7 +3226,7 @@ const app = {
     }
     estado.enviando = true;
     renderizar();
-    const resp = await apiCall('editarUsuario', { usuario, papel, franquia, novaSenha: novaSenha || undefined, atorPapel: estado.papel, atorFranquia: estado.franquia });
+    const resp = await apiCall('editarUsuario', { usuario, papel, franquia, novaSenha: novaSenha || undefined, corPostIt, atorPapel: estado.papel, atorFranquia: estado.franquia });
     estado.enviando = false;
     if(resp.ok){
       estado.modalEditarUsuario = null;
