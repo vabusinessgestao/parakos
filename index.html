@@ -89,6 +89,15 @@
     background:var(--accent); color:#241a05; text-align:center; font-size:13px; font-weight:600;
     padding:8px 12px; letter-spacing:.02em;
   }
+  .faixa-alerta-postit{
+    background:var(--card); border-left:5px solid var(--accent); color:var(--ink);
+    text-align:center; font-size:13px; font-weight:500; padding:9px 14px;
+  }
+  .faixa-alerta-postit button{ margin-left:10px; font-weight:600; text-decoration:underline; }
+  .badge-contador-menu{
+    display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px;
+    border-radius:9px; color:#fff; font-size:11px; font-weight:700; padding:0 5px; vertical-align:middle;
+  }
 
   /* ---------- SHELL ---------- */
   .app-shell{ min-height:100vh; display:flex; flex-direction:column; }
@@ -355,7 +364,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v2.3.0',
+  VERSAO: 'v2.4.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -476,7 +485,7 @@ function demoEsquema(){
 }
 function demoLogin(d){
   const usuario = DEMO_DB.usuarios.find(u=>String(u.usuario)===String(d.usuario) && String(u.senha)===String(d.senha));
-  return usuario ? { ok:true, usuario:usuario.usuario, papel:usuario.papel||'colaborador', franquia:usuario.franquia||null } : { ok:false, erro:'Usuário ou senha inválidos.' };
+  return usuario ? { ok:true, usuario:usuario.usuario, papel:usuario.papel||'colaborador', franquia:usuario.franquia||null, alertasPostIt: usuario.alertas_post_it!==false } : { ok:false, erro:'Usuário ou senha inválidos.' };
 }
 // usado ao restaurar a sessão (F5): reconfere papel/franquia direto no banco,
 // em vez de confiar no que ficou guardado no navegador — se um admin/gerente
@@ -484,7 +493,7 @@ function demoLogin(d){
 // precisa refletir isso no próximo carregamento da página, não só no próximo login
 function demoObterUsuario(d){
   const usuario = DEMO_DB.usuarios.find(u=>String(u.usuario)===String(d.usuario));
-  return usuario ? { ok:true, papel:usuario.papel||'colaborador', franquia:usuario.franquia||null } : { ok:false, erro:'Usuário não encontrado.' };
+  return usuario ? { ok:true, papel:usuario.papel||'colaborador', franquia:usuario.franquia||null, alertasPostIt: usuario.alertas_post_it!==false } : { ok:false, erro:'Usuário não encontrado.' };
 }
 function demoListar(d){
   d = d || {};
@@ -554,6 +563,13 @@ function demoTrocarSenha(d){
   const usuario = DEMO_DB.usuarios.find(u=>String(u.usuario)===String(d.usuario) && String(u.senha)===String(d.senhaAtual));
   if(!usuario) return { ok:false, erro:'Senha atual incorreta.' };
   usuario.senha = d.novaSenha;
+  return { ok:true };
+}
+function demoSalvarPreferenciaAlerta(d){
+  if(d.usuarioLogado !== d.usuario) return { ok:false, erro:'Você só pode alterar sua própria preferência.' };
+  const usuario = DEMO_DB.usuarios.find(u=>u.usuario===d.usuario);
+  if(!usuario) return { ok:false, erro:'Usuário não encontrado.' };
+  usuario.alertas_post_it = !!d.ativo;
   return { ok:true };
 }
 function demoDashboard(d){
@@ -847,19 +863,19 @@ async function supabaseEsquema(){
   return { ok:true, abas: [{ nome:'Acompanhamento', colunas }] };
 }
 async function supabaseLogin(d){
-  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel, franquia')
+  const { data, error } = await clienteSupabase().from('usuarios').select('usuario, papel, franquia, alertas_post_it')
     .eq('usuario', d.usuario).eq('senha', d.senha).maybeSingle();
   if(error) return { ok:false, erro:'Falha de conexão com o banco: ' + error.message };
   if(!data) return { ok:false, erro:'Usuário ou senha inválidos.' };
-  return { ok:true, usuario:data.usuario, papel:data.papel||'colaborador', franquia:data.franquia||null };
+  return { ok:true, usuario:data.usuario, papel:data.papel||'colaborador', franquia:data.franquia||null, alertasPostIt: data.alertas_post_it!==false };
 }
 // usado ao restaurar a sessão (F5): reconfere papel/franquia direto no banco,
 // em vez de confiar no que ficou guardado no navegador
 async function supabaseObterUsuario(d){
-  const { data, error } = await clienteSupabase().from('usuarios').select('papel, franquia').eq('usuario', d.usuario).maybeSingle();
+  const { data, error } = await clienteSupabase().from('usuarios').select('papel, franquia, alertas_post_it').eq('usuario', d.usuario).maybeSingle();
   if(error) return { ok:false, erro:'Falha de conexão com o banco: ' + error.message };
   if(!data) return { ok:false, erro:'Usuário não encontrado.' };
-  return { ok:true, papel:data.papel||'colaborador', franquia:data.franquia||null };
+  return { ok:true, papel:data.papel||'colaborador', franquia:data.franquia||null, alertasPostIt: data.alertas_post_it!==false };
 }
 async function supabaseListar(d){
   d = d || {};
@@ -948,6 +964,12 @@ async function supabaseTrocarSenha(d){
   if(!data) return { ok:false, erro:'Senha atual incorreta.' };
   const { error: erroUpdate } = await clienteSupabase().from('usuarios').update({ senha: d.novaSenha }).eq('usuario', d.usuario);
   if(erroUpdate) return { ok:false, erro:'Falha ao trocar senha: ' + erroUpdate.message };
+  return { ok:true };
+}
+async function supabaseSalvarPreferenciaAlerta(d){
+  if(d.usuarioLogado !== d.usuario) return { ok:false, erro:'Você só pode alterar sua própria preferência.' };
+  const { error } = await clienteSupabase().from('usuarios').update({ alertas_post_it: !!d.ativo }).eq('usuario', d.usuario);
+  if(error) return { ok:false, erro:'Falha ao salvar preferência: ' + error.message };
   return { ok:true };
 }
 async function supabaseDashboard(d){
@@ -1259,6 +1281,7 @@ function apiCall(action, data){
           case 'excluir': resultado = demoExcluir(data); break;
           case 'dashboard': resultado = demoDashboard(data); break;
           case 'trocarSenha': resultado = demoTrocarSenha(data); break;
+          case 'salvarPreferenciaAlerta': resultado = demoSalvarPreferenciaAlerta(data); break;
           case 'listarOpcoes': resultado = demoListarOpcoes(); break;
           case 'adicionarOpcao': resultado = demoAdicionarOpcao(data); break;
           case 'removerOpcao': resultado = demoRemoverOpcao(data); break;
@@ -1298,6 +1321,7 @@ function apiCall(action, data){
     case 'excluir': return comTratativaDeErro(()=>supabaseExcluir(data));
     case 'dashboard': return comTratativaDeErro(()=>supabaseDashboard(data));
     case 'trocarSenha': return comTratativaDeErro(()=>supabaseTrocarSenha(data));
+    case 'salvarPreferenciaAlerta': return comTratativaDeErro(()=>supabaseSalvarPreferenciaAlerta(data));
     case 'listarOpcoes': return comTratativaDeErro(()=>supabaseListarOpcoes());
     case 'adicionarOpcao': return comTratativaDeErro(()=>supabaseAdicionarOpcao(data));
     case 'removerOpcao': return comTratativaDeErro(()=>supabaseRemoverOpcao(data));
@@ -1365,7 +1389,12 @@ function estadoInicial(){
     modalNovoRecado:null,
     recadoRespondendo:null,
     recadosArquivados:null,
-    mostrarArquivados:false
+    mostrarArquivados:false,
+    alertasPostIt:true,
+    contagemRecebidosPostIt:null,
+    corBadgePostIt:null,
+    alertaNovoPostIt:null,
+    _timerAlertaPostIt:null
   };
 }
 let estado = estadoInicial();
@@ -1560,6 +1589,11 @@ function viewShell(){
     <div class="app-shell">
       ${barraProgressoGlobal()}
       ${!CONFIG.SUPABASE_URL ? '<div class="faixa-demo">MODO DEMONSTRAÇÃO — dados fictícios, nada é salvo de verdade</div>' : ''}
+      ${estado.alertaNovoPostIt ? `<div class="faixa-alerta-postit" style="border-left-color:${estado.alertaNovoPostIt.cor}">
+        🔔 Você recebeu ${estado.alertaNovoPostIt.quantidade} novo${estado.alertaNovoPostIt.quantidade>1?'s':''} post-it${estado.alertaNovoPostIt.quantidade>1?'s':''}.
+        <button type="button" class="botao-linkado" style="color:var(--ink)" onclick="app.irParaPostItDoAlerta()">Ver</button>
+        <button type="button" class="botao-linkado" style="color:var(--ink)" onclick="app.dispensarAlertaPostIt()">Dispensar</button>
+      </div>` : ''}
       <header class="topo">
         <div class="marca">${estado.logomarca ? `<img src="${estado.logomarca}" alt="Logomarca" class="logomarca-topo">` : '<span class="marca-selo">✓</span>'} Parakos</div>
         <div class="usuario-info">
@@ -1575,7 +1609,7 @@ function viewShell(){
           <button class="aba-lateral ${estado.abaAtiva==='calendario'?'ativa':''}" onclick="app.selecionarAba('calendario')">📅 Calendário</button>
           ${(estado.schema||[]).map(a=>`<button class="aba-lateral ${estado.abaAtiva===a.nome?'ativa':''}" onclick="app.selecionarAba('${escapeHtml(a.nome)}')">📁 ${escapeHtml(a.nome)}</button>`).join('')}
           <button class="aba-lateral ${estado.abaAtiva==='dashboard'?'ativa':''}" onclick="app.selecionarAba('dashboard')">📊 Dashboard</button>
-          <button class="aba-lateral ${estado.abaAtiva==='cards'?'ativa':''}" onclick="app.abrirCards()">📌 Post-it</button>
+          <button class="aba-lateral ${estado.abaAtiva==='cards'?'ativa':''}" onclick="app.abrirCards()">📌 Post-it${estado.contagemRecebidosPostIt>0 ? ` <span class="badge-contador-menu" style="background:${estado.corBadgePostIt||'var(--accent)'}">${estado.contagemRecebidosPostIt}</span>` : ''}</button>
           ${(estado.papel==='admin'||estado.papel==='gerente') ? `<button class="aba-lateral ${estado.abaAtiva==='configuracoes'?'ativa':''}" onclick="app.abrirConfiguracoes()">⚙️ Configurações</button>` : ''}
         </nav>
         <main class="conteudo">
@@ -1995,6 +2029,27 @@ function viewModalDiaCalendario(entradas){
 function corPostItUsuario(usuario){
   const f = (estado.funcionarios||[]).find(x=>x.usuario===usuario);
   return (f && f.cor_post_it) || COR_POST_IT_PADRAO;
+}
+
+// checagem periódica em segundo plano — atualiza a bolinha do menu sempre,
+// e só dispara o aviso na tela se o próprio usuário tiver isso ligado
+async function verificarNovosPostIt(){
+  if(!estado.usuario) return;
+  const resp = await apiCall('listarRecados', { usuario: estado.usuario });
+  if(!resp.ok) return;
+  const novaContagem = resp.recebidos.length;
+  if(estado.contagemRecebidosPostIt!=null && novaContagem > estado.contagemRecebidosPostIt && estado.alertasPostIt){
+    const diferenca = novaContagem - estado.contagemRecebidosPostIt;
+    const maisRecente = resp.recebidos[resp.recebidos.length-1];
+    estado.alertaNovoPostIt = { quantidade: diferenca, cor: corPostItUsuario(maisRecente.remetente) };
+  }
+  estado.contagemRecebidosPostIt = novaContagem;
+  estado.corBadgePostIt = novaContagem>0 ? corPostItUsuario(resp.recebidos[resp.recebidos.length-1].remetente) : null;
+  if(estado.abaAtiva==='cards' && estado.recados){
+    estado.recados.recebidos = resp.recebidos;
+    estado.recados.enviados = resp.enviados;
+  }
+  renderizar();
 }
 
 function viewCards(){
@@ -2482,6 +2537,11 @@ function viewModalSenha(){
             <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Salvando…':'Salvar nova senha'}</button>
           </div>
         </form>
+        <hr class="separador-config">
+        <label style="flex-direction:row; align-items:center; gap:8px">
+          <input type="checkbox" id="alertaPostItCheckbox" ${estado.alertasPostIt?'checked':''} onchange="app.alternarPreferenciaAlerta(this.checked)">
+          🔔 Avisar quando eu receber um novo post-it
+        </label>
       </div>
     </div>`;
 }
@@ -2754,6 +2814,7 @@ const app = {
       estado.usuario = resp.usuario;
       estado.papel = resp.papel;
       estado.franquia = resp.franquia || null;
+      estado.alertasPostIt = resp.alertasPostIt !== false;
       estado.erroLogin = null;
       const [respSchema, respFuncionarios] = await Promise.all([apiCall('schema', {}), apiCall('listarFuncionarios', {})]);
       estado.enviando = false;
@@ -2764,6 +2825,7 @@ const app = {
         salvarSessao(estado.usuario, estado.papel, estado.franquia);
         renderizar();
         app.atualizarDados();
+        app.iniciarMonitorPostIt();
       } else {
         estado.erroLogin = 'Não foi possível carregar a estrutura da planilha: ' + (respSchema.erro||'');
         estado.usuario = null; estado.papel = null; estado.franquia = null;
@@ -2778,6 +2840,7 @@ const app = {
 
   sair(){
     if(estado.timerAuto) clearInterval(estado.timerAuto);
+    app.pararMonitorPostIt();
     limparSessaoSalva();
     const { logomarca, coresTema, coresSituacao } = estado; // identidade visual não é da sessão: mantém na tela de login
     estado = estadoInicial();
@@ -3089,6 +3152,7 @@ const app = {
   async abrirCards(){
     estado.abaAtiva = 'cards';
     estado.erroAtualizacao = null;
+    estado.alertaNovoPostIt = null; // visitar a aba já "consome" o aviso pendente
     renderizar();
     estado.carregando = true;
     renderizar();
@@ -3096,6 +3160,8 @@ const app = {
     estado.carregando = false;
     if(resp.ok){
       estado.recados = { recebidos: resp.recebidos, enviados: resp.enviados };
+      estado.contagemRecebidosPostIt = resp.recebidos.length;
+      estado.corBadgePostIt = resp.recebidos.length>0 ? corPostItUsuario(resp.recebidos[resp.recebidos.length-1].remetente) : null;
       estado.erroAtualizacao = null;
     } else {
       estado.erroAtualizacao = resp.erro || 'Não foi possível carregar os recados.';
@@ -3183,6 +3249,33 @@ const app = {
       if(resp.ok) estado.recadosArquivados = { recebidos: resp.recebidos, enviados: resp.enviados };
     }
     renderizar();
+  },
+
+  // monitor de post-it em segundo plano: roda mesmo em outras abas, atualiza
+  // a bolinha do menu, e só mostra o aviso na tela se o usuário tiver ligado
+  iniciarMonitorPostIt(){
+    app.pararMonitorPostIt();
+    verificarNovosPostIt(); // roda uma vez na hora — define a contagem-base sem alertar
+    estado._timerAlertaPostIt = setInterval(verificarNovosPostIt, 45000);
+  },
+  pararMonitorPostIt(){
+    if(estado._timerAlertaPostIt){ clearInterval(estado._timerAlertaPostIt); estado._timerAlertaPostIt = null; }
+  },
+  irParaPostItDoAlerta(){
+    estado.alertaNovoPostIt = null;
+    app.abrirCards();
+  },
+  dispensarAlertaPostIt(){
+    estado.alertaNovoPostIt = null;
+    renderizar();
+  },
+  async alternarPreferenciaAlerta(ativo){
+    estado.alertasPostIt = ativo;
+    renderizar();
+    const resp = await apiCall('salvarPreferenciaAlerta', { usuario: estado.usuario, ativo, usuarioLogado: estado.usuario });
+    if(!resp.ok){
+      alert('Não foi possível salvar a preferência: ' + (resp.erro || 'erro desconhecido.'));
+    }
   },
 
   // arrastar-e-soltar do post-it: manipula o DOM diretamente durante o
@@ -3618,6 +3711,7 @@ window.app = app;
   if(respUsuario.ok){
     estado.papel = respUsuario.papel;
     estado.franquia = respUsuario.franquia;
+    estado.alertasPostIt = respUsuario.alertasPostIt !== false;
     salvarSessao(estado.usuario, estado.papel, estado.franquia);
   }
   // se falhar (banco fora do ar etc.), segue com o valor salvo localmente
@@ -3631,6 +3725,7 @@ window.app = app;
     estado.abaAtiva = 'calendario';
     renderizar();
     app.atualizarDados();
+    app.iniciarMonitorPostIt();
   } else {
     // não foi possível confirmar a sessão (banco fora do ar, etc.) — volta pro login
     limparSessaoSalva();
