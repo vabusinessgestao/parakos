@@ -355,7 +355,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v2.2.0',
+  VERSAO: 'v2.3.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -720,8 +720,9 @@ function demoEditarUsuario(d){
 // ---- Cards (post-its) ----
 function demoListarRecados(d){
   const usuario = d.usuario;
-  const recebidos = DEMO_DB.recados.filter(r=>r.destinatario===usuario && !r.fechado_destinatario);
-  const enviados = DEMO_DB.recados.filter(r=>r.remetente===usuario && !r.fechado_remetente);
+  // lembretes (remetente===destinatario) só aparecem no quadro, não duplicam em "Enviados"
+  const recebidos = DEMO_DB.recados.filter(r=>r.destinatario===usuario && !r.excluido);
+  const enviados = DEMO_DB.recados.filter(r=>r.remetente===usuario && r.destinatario!==usuario && !r.excluido);
   return { ok:true, recebidos, enviados };
 }
 function demoCriarRecado(d){
@@ -732,29 +733,38 @@ function demoCriarRecado(d){
   if(d.atorPapel!=='admin' && destinatarioUsuario.franquia !== d.atorFranquia){
     return { ok:false, erro:'Você só pode mandar recado pra colegas da sua própria Franquia.' };
   }
+  const agora = new Date().toISOString();
   const novo = {
-    id: gerarUuid(), remetente: d.remetente, destinatario: d.destinatario, texto,
-    resposta: null, fechado_destinatario: false, fechado_remetente: false,
+    id: gerarUuid(), remetente: d.remetente, destinatario: d.destinatario,
+    mensagens: [{ autor: d.remetente, texto, criadoEm: agora }],
+    excluido: false, excluido_por: null, excluido_em: null,
     pos_x: 30 + Math.round(Math.random()*140), pos_y: 20 + Math.round(Math.random()*90),
-    criado_em: new Date().toISOString(), respondido_em: null
+    criado_em: agora
   };
   DEMO_DB.recados.push(novo);
   return { ok:true, recado: novo };
 }
-function demoResponderRecado(d){
+function demoAdicionarMensagemRecado(d){
   const recado = DEMO_DB.recados.find(r=>r.id===d.id);
   if(!recado) return { ok:false, erro:'Recado não encontrado.' };
-  if(recado.destinatario !== d.usuarioLogado) return { ok:false, erro:'Você não pode responder um recado que não é seu.' };
-  recado.resposta = (d.resposta||'').trim();
-  recado.fechado_destinatario = true;
-  recado.respondido_em = new Date().toISOString();
+  if(recado.excluido) return { ok:false, erro:'Essa conversa já foi excluída.' };
+  if(d.usuarioLogado !== recado.remetente && d.usuarioLogado !== recado.destinatario){
+    return { ok:false, erro:'Você não faz parte dessa conversa.' };
+  }
+  const texto = (d.texto||'').trim();
+  if(!texto) return { ok:false, erro:'Escreva uma mensagem.' };
+  recado.mensagens = [...(recado.mensagens||[]), { autor: d.usuarioLogado, texto, criadoEm: new Date().toISOString() }];
   return { ok:true, recado };
 }
-function demoFecharRecadoRemetente(d){
+function demoExcluirRecado(d){
   const recado = DEMO_DB.recados.find(r=>r.id===d.id);
   if(!recado) return { ok:false, erro:'Recado não encontrado.' };
-  if(recado.remetente !== d.usuarioLogado) return { ok:false, erro:'Você não pode fechar um recado que não enviou.' };
-  recado.fechado_remetente = true;
+  if(d.usuarioLogado !== recado.remetente && d.usuarioLogado !== recado.destinatario){
+    return { ok:false, erro:'Você não faz parte dessa conversa.' };
+  }
+  recado.excluido = true;
+  recado.excluido_por = d.usuarioLogado;
+  recado.excluido_em = new Date().toISOString();
   return { ok:true };
 }
 function demoAtualizarPosicaoRecado(d){
@@ -767,8 +777,8 @@ function demoAtualizarPosicaoRecado(d){
 }
 function demoListarRecadosArquivados(d){
   const usuario = d.usuario;
-  const recebidos = DEMO_DB.recados.filter(r=>r.destinatario===usuario && r.fechado_destinatario);
-  const enviados = DEMO_DB.recados.filter(r=>r.remetente===usuario && r.fechado_remetente);
+  const recebidos = DEMO_DB.recados.filter(r=>r.destinatario===usuario && r.excluido);
+  const enviados = DEMO_DB.recados.filter(r=>r.remetente===usuario && r.destinatario!==usuario && r.excluido);
   return { ok:true, recebidos, enviados };
 }
 
@@ -1100,9 +1110,10 @@ async function supabaseEditarUsuario(d){
 // ---- Cards (post-its) ----
 async function supabaseListarRecados(d){
   const usuario = d.usuario;
+  // lembretes (remetente===destinatario) só aparecem no quadro, não duplicam em "Enviados"
   const [respRecebidos, respEnviados] = await Promise.all([
-    clienteSupabase().from('recados').select('*').eq('destinatario', usuario).eq('fechado_destinatario', false).order('criado_em'),
-    clienteSupabase().from('recados').select('*').eq('remetente', usuario).eq('fechado_remetente', false).order('criado_em')
+    clienteSupabase().from('recados').select('*').eq('destinatario', usuario).eq('excluido', false).order('criado_em'),
+    clienteSupabase().from('recados').select('*').eq('remetente', usuario).neq('destinatario', usuario).eq('excluido', false).order('criado_em')
   ]);
   if(respRecebidos.error) return { ok:false, erro:'Falha ao carregar recados: ' + respRecebidos.error.message };
   if(respEnviados.error) return { ok:false, erro:'Falha ao carregar recados: ' + respEnviados.error.message };
@@ -1119,30 +1130,39 @@ async function supabaseCriarRecado(d){
   }
   const posX = 30 + Math.round(Math.random()*140);
   const posY = 20 + Math.round(Math.random()*90);
+  const agora = new Date().toISOString();
   const { data, error } = await clienteSupabase().from('recados').insert({
-    remetente: d.remetente, destinatario: d.destinatario, texto, pos_x: posX, pos_y: posY
+    remetente: d.remetente, destinatario: d.destinatario,
+    mensagens: [{ autor: d.remetente, texto, criadoEm: agora }],
+    pos_x: posX, pos_y: posY
   }).select().single();
   if(error) return { ok:false, erro:'Falha ao criar recado: ' + error.message };
   return { ok:true, recado: data };
 }
-async function supabaseResponderRecado(d){
-  const { data: atual, error: erroAtual } = await clienteSupabase().from('recados').select('destinatario').eq('id', d.id).maybeSingle();
-  if(erroAtual) return { ok:false, erro:'Falha ao responder: ' + erroAtual.message };
+async function supabaseAdicionarMensagemRecado(d){
+  const { data: atual, error: erroAtual } = await clienteSupabase().from('recados').select('remetente, destinatario, mensagens, excluido').eq('id', d.id).maybeSingle();
+  if(erroAtual) return { ok:false, erro:'Falha ao enviar mensagem: ' + erroAtual.message };
   if(!atual) return { ok:false, erro:'Recado não encontrado.' };
-  if(atual.destinatario !== d.usuarioLogado) return { ok:false, erro:'Você não pode responder um recado que não é seu.' };
-  const { data, error } = await clienteSupabase().from('recados').update({
-    resposta: (d.resposta||'').trim(), fechado_destinatario: true, respondido_em: new Date().toISOString()
-  }).eq('id', d.id).select().single();
-  if(error) return { ok:false, erro:'Falha ao responder: ' + error.message };
+  if(atual.excluido) return { ok:false, erro:'Essa conversa já foi excluída.' };
+  if(d.usuarioLogado !== atual.remetente && d.usuarioLogado !== atual.destinatario){
+    return { ok:false, erro:'Você não faz parte dessa conversa.' };
+  }
+  const texto = (d.texto||'').trim();
+  if(!texto) return { ok:false, erro:'Escreva uma mensagem.' };
+  const novasMensagens = [...(atual.mensagens||[]), { autor: d.usuarioLogado, texto, criadoEm: new Date().toISOString() }];
+  const { data, error } = await clienteSupabase().from('recados').update({ mensagens: novasMensagens }).eq('id', d.id).select().single();
+  if(error) return { ok:false, erro:'Falha ao enviar mensagem: ' + error.message };
   return { ok:true, recado: data };
 }
-async function supabaseFecharRecadoRemetente(d){
-  const { data: atual, error: erroAtual } = await clienteSupabase().from('recados').select('remetente').eq('id', d.id).maybeSingle();
-  if(erroAtual) return { ok:false, erro:'Falha ao fechar recado: ' + erroAtual.message };
+async function supabaseExcluirRecado(d){
+  const { data: atual, error: erroAtual } = await clienteSupabase().from('recados').select('remetente, destinatario').eq('id', d.id).maybeSingle();
+  if(erroAtual) return { ok:false, erro:'Falha ao excluir recado: ' + erroAtual.message };
   if(!atual) return { ok:false, erro:'Recado não encontrado.' };
-  if(atual.remetente !== d.usuarioLogado) return { ok:false, erro:'Você não pode fechar um recado que não enviou.' };
-  const { error } = await clienteSupabase().from('recados').update({ fechado_remetente: true }).eq('id', d.id);
-  if(error) return { ok:false, erro:'Falha ao fechar recado: ' + error.message };
+  if(d.usuarioLogado !== atual.remetente && d.usuarioLogado !== atual.destinatario){
+    return { ok:false, erro:'Você não faz parte dessa conversa.' };
+  }
+  const { error } = await clienteSupabase().from('recados').update({ excluido:true, excluido_por:d.usuarioLogado, excluido_em: new Date().toISOString() }).eq('id', d.id);
+  if(error) return { ok:false, erro:'Falha ao excluir recado: ' + error.message };
   return { ok:true };
 }
 async function supabaseAtualizarPosicaoRecado(d){
@@ -1157,8 +1177,8 @@ async function supabaseAtualizarPosicaoRecado(d){
 async function supabaseListarRecadosArquivados(d){
   const usuario = d.usuario;
   const [respRecebidos, respEnviados] = await Promise.all([
-    clienteSupabase().from('recados').select('*').eq('destinatario', usuario).eq('fechado_destinatario', true).order('criado_em', { ascending:false }),
-    clienteSupabase().from('recados').select('*').eq('remetente', usuario).eq('fechado_remetente', true).order('criado_em', { ascending:false })
+    clienteSupabase().from('recados').select('*').eq('destinatario', usuario).eq('excluido', true).order('criado_em', { ascending:false }),
+    clienteSupabase().from('recados').select('*').eq('remetente', usuario).neq('destinatario', usuario).eq('excluido', true).order('criado_em', { ascending:false })
   ]);
   if(respRecebidos.error) return { ok:false, erro:'Falha ao carregar arquivados: ' + respRecebidos.error.message };
   if(respEnviados.error) return { ok:false, erro:'Falha ao carregar arquivados: ' + respEnviados.error.message };
@@ -1249,8 +1269,8 @@ function apiCall(action, data){
           case 'listarFuncionarios': resultado = demoListarFuncionarios(); break;
           case 'listarRecados': resultado = demoListarRecados(data); break;
           case 'criarRecado': resultado = demoCriarRecado(data); break;
-          case 'responderRecado': resultado = demoResponderRecado(data); break;
-          case 'fecharRecadoRemetente': resultado = demoFecharRecadoRemetente(data); break;
+          case 'adicionarMensagemRecado': resultado = demoAdicionarMensagemRecado(data); break;
+          case 'excluirRecado': resultado = demoExcluirRecado(data); break;
           case 'atualizarPosicaoRecado': resultado = demoAtualizarPosicaoRecado(data); break;
           case 'listarRecadosArquivados': resultado = demoListarRecadosArquivados(data); break;
           case 'criarUsuario': resultado = demoCriarUsuario(data); break;
@@ -1288,8 +1308,8 @@ function apiCall(action, data){
     case 'listarFuncionarios': return comTratativaDeErro(()=>supabaseListarFuncionarios());
     case 'listarRecados': return comTratativaDeErro(()=>supabaseListarRecados(data));
     case 'criarRecado': return comTratativaDeErro(()=>supabaseCriarRecado(data));
-    case 'responderRecado': return comTratativaDeErro(()=>supabaseResponderRecado(data));
-    case 'fecharRecadoRemetente': return comTratativaDeErro(()=>supabaseFecharRecadoRemetente(data));
+    case 'adicionarMensagemRecado': return comTratativaDeErro(()=>supabaseAdicionarMensagemRecado(data));
+    case 'excluirRecado': return comTratativaDeErro(()=>supabaseExcluirRecado(data));
     case 'atualizarPosicaoRecado': return comTratativaDeErro(()=>supabaseAtualizarPosicaoRecado(data));
     case 'listarRecadosArquivados': return comTratativaDeErro(()=>supabaseListarRecadosArquivados(data));
     case 'criarUsuario': return comTratativaDeErro(()=>supabaseCriarUsuario(data));
@@ -1555,7 +1575,7 @@ function viewShell(){
           <button class="aba-lateral ${estado.abaAtiva==='calendario'?'ativa':''}" onclick="app.selecionarAba('calendario')">📅 Calendário</button>
           ${(estado.schema||[]).map(a=>`<button class="aba-lateral ${estado.abaAtiva===a.nome?'ativa':''}" onclick="app.selecionarAba('${escapeHtml(a.nome)}')">📁 ${escapeHtml(a.nome)}</button>`).join('')}
           <button class="aba-lateral ${estado.abaAtiva==='dashboard'?'ativa':''}" onclick="app.selecionarAba('dashboard')">📊 Dashboard</button>
-          <button class="aba-lateral ${estado.abaAtiva==='cards'?'ativa':''}" onclick="app.abrirCards()">🗒️ Cards</button>
+          <button class="aba-lateral ${estado.abaAtiva==='cards'?'ativa':''}" onclick="app.abrirCards()">📌 Post-it</button>
           ${(estado.papel==='admin'||estado.papel==='gerente') ? `<button class="aba-lateral ${estado.abaAtiva==='configuracoes'?'ativa':''}" onclick="app.abrirConfiguracoes()">⚙️ Configurações</button>` : ''}
         </nav>
         <main class="conteudo">
@@ -1982,10 +2002,10 @@ function viewCards(){
   const enviados = (estado.recados && estado.recados.enviados) || [];
   return `
     <div class="cabecalho-conteudo">
-      <h2>Cards</h2>
+      <h2>Post-it</h2>
       <div class="acoes-cabecalho">
         ${barraAtualizacao()}
-        <button class="botao-primario" onclick="app.abrirNovoRecado()">+ Novo recado</button>
+        <button class="botao-primario" onclick="app.abrirNovoRecado()">+ Novo post-it</button>
       </div>
     </div>
     ${estado.erroAtualizacao ? `<div class="aviso-discreto">${escapeHtml(estado.erroAtualizacao)}</div>` : ''}
@@ -2025,17 +2045,6 @@ function viewSecaoArquivados(){
     </div>`;
 }
 
-function viewRecadoArquivado(r, direcao){
-  const cor = corPostItUsuario(r.remetente);
-  const rotulo = direcao==='recebido' ? `De: ${r.remetente}` : `Para: ${r.destinatario}`;
-  return `<div class="post-it post-it-estatico" style="background-color:${escapeHtml(cor)}">
-    <div class="post-it-remetente">${escapeHtml(rotulo)}</div>
-    <div class="post-it-data mono">${escapeHtml(formatarDataHoraCompleta(r.criado_em))}</div>
-    <div class="post-it-texto">${escapeHtml(r.texto)}</div>
-    ${r.resposta ? `<div class="resposta-recado-enviado"><strong>Resposta:</strong> ${escapeHtml(r.resposta)}</div>` : ''}
-  </div>`;
-}
-
 // formata um timestamp ISO (vindo do banco) como "dd/mm/aaaa hh:mm"
 function formatarDataHoraCompleta(isoStr){
   if(!isoStr) return '';
@@ -2044,58 +2053,94 @@ function formatarDataHoraCompleta(isoStr){
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
-function viewPostIt(r){
-  const cor = corPostItUsuario(r.remetente);
-  const respondendo = estado.recadoRespondendo === r.id;
-  return `<div class="post-it" style="left:${r.pos_x}px; top:${r.pos_y}px; background-color:${escapeHtml(cor)}" data-id="${escapeHtml(r.id)}" onmousedown="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')" ontouchstart="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')">
-    <div class="post-it-remetente">${escapeHtml(r.remetente)}</div>
+// devolve a lista de mensagens de um recado — se ele foi criado antes dessa
+// versão (só tinha "texto"/"resposta" únicos, sem ida-e-volta livre),
+// reconstrói a conversa a partir desses campos antigos pra não sumir nada
+function mensagensDoRecado(r){
+  if(r.mensagens && r.mensagens.length) return r.mensagens;
+  const sinteticas = [];
+  if(r.texto) sinteticas.push({ autor:r.remetente, texto:r.texto, criadoEm:r.criado_em });
+  if(r.resposta) sinteticas.push({ autor:r.destinatario, texto:r.resposta, criadoEm:r.respondido_em });
+  return sinteticas;
+}
+
+// corpo comum do post-it (usado tanto no quadro de quem recebeu quanto na
+// grade de "Enviados" de quem mandou) — os dois lados podem ir e voltar
+// livremente na mesma conversa, ela só termina quando alguém excluir
+function corpoConversaRecado(r){
+  const digitando = estado.recadoRespondendo === r.id;
+  const mensagens = mensagensDoRecado(r);
+  const ehLembrete = r.remetente === r.destinatario;
+  return `
+    <div class="post-it-remetente">${ehLembrete ? '📌 Lembrete' : `${escapeHtml(r.remetente)} → ${escapeHtml(r.destinatario)}`}</div>
     <div class="post-it-data mono">${escapeHtml(formatarDataHoraCompleta(r.criado_em))}</div>
-    <div class="post-it-texto">${escapeHtml(r.texto)}</div>
-    ${respondendo ? `
-      <textarea class="post-it-resposta" id="respostaRecado_${escapeHtml(r.id)}" placeholder="Escreva sua resposta…" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()"></textarea>
+    <div class="post-it-mensagens">
+      ${mensagens.length===0 ? '' : mensagens.map(m=>`<div class="post-it-mensagem"><strong>${escapeHtml(m.autor)}:</strong> ${escapeHtml(m.texto)}</div>`).join('')}
+    </div>
+    ${digitando ? `
+      <textarea class="post-it-resposta" id="respostaRecado_${escapeHtml(r.id)}" placeholder="${ehLembrete?'Acrescentar ao lembrete…':'Escreva uma mensagem…'}" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()"></textarea>
       <div class="post-it-acoes">
         <button type="button" class="botao-secundario" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.cancelarRespostaPostIt()">Cancelar</button>
-        <button type="button" class="botao-primario" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.enviarRespostaPostIt('${escapeHtml(r.id)}')">Responder e fechar</button>
+        <button type="button" class="botao-primario" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.enviarMensagemRecado('${escapeHtml(r.id)}')">Enviar</button>
       </div>
     ` : `
-      <button type="button" class="post-it-botao-responder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.abrirRespostaPostIt('${escapeHtml(r.id)}')">Responder e fechar</button>
+      <div class="post-it-acoes">
+        <button type="button" class="post-it-botao-responder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.abrirRespostaPostIt('${escapeHtml(r.id)}')">${ehLembrete?'Acrescentar':'Responder'}</button>
+        <button type="button" class="botao-icone" title="Excluir" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); app.excluirRecadoConversa('${escapeHtml(r.id)}')">🗑</button>
+      </div>
     `}
+  `;
+}
+
+function viewRecadoArquivado(r, direcao){
+  const cor = corPostItUsuario(r.remetente);
+  const ehLembrete = r.remetente === r.destinatario;
+  const rotulo = ehLembrete ? '📌 Lembrete' : (direcao==='recebido' ? `De: ${r.remetente}` : `Para: ${r.destinatario}`);
+  const mensagens = mensagensDoRecado(r);
+  return `<div class="post-it post-it-estatico" style="background-color:${escapeHtml(cor)}">
+    <div class="post-it-remetente">${escapeHtml(rotulo)}</div>
+    <div class="post-it-data mono">${escapeHtml(formatarDataHoraCompleta(r.criado_em))}</div>
+    <div class="post-it-mensagens">
+      ${mensagens.map(m=>`<div class="post-it-mensagem"><strong>${escapeHtml(m.autor)}:</strong> ${escapeHtml(m.texto)}</div>`).join('')}
+    </div>
+    ${r.excluido_por ? `<p style="font-size:10.5px;opacity:.7;margin-top:6px">Excluído por ${escapeHtml(r.excluido_por)}${r.excluido_em?` em ${escapeHtml(formatarDataHoraCompleta(r.excluido_em))}`:''}</p>` : ''}
+  </div>`;
+}
+
+function viewPostIt(r){
+  const cor = corPostItUsuario(r.remetente);
+  return `<div class="post-it" style="left:${r.pos_x}px; top:${r.pos_y}px; background-color:${escapeHtml(cor)}" data-id="${escapeHtml(r.id)}" onmousedown="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')" ontouchstart="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')">
+    ${corpoConversaRecado(r)}
   </div>`;
 }
 
 function viewRecadoEnviado(r){
   const cor = corPostItUsuario(r.remetente);
   return `<div class="post-it post-it-estatico" style="background-color:${escapeHtml(cor)}">
-    <div class="post-it-remetente">Para: ${escapeHtml(r.destinatario)}</div>
-    <div class="post-it-data mono">${escapeHtml(formatarDataHoraCompleta(r.criado_em))}</div>
-    <div class="post-it-texto">${escapeHtml(r.texto)}</div>
-    ${r.resposta
-      ? `<div class="resposta-recado-enviado"><strong>Resposta:</strong> ${escapeHtml(r.resposta)}${r.respondido_em ? ` <span class="mono" style="font-size:10px;opacity:.75">(${escapeHtml(formatarDataHoraCompleta(r.respondido_em))})</span>` : ''}</div>
-         <button type="button" class="botao-secundario" style="margin-top:8px" onclick="app.fecharRecadoEnviado('${escapeHtml(r.id)}')">Fechar</button>`
-      : `<p class="vazio-inline" style="color:rgba(36,26,5,0.6)">Aguardando resposta…</p>`}
+    ${corpoConversaRecado(r)}
   </div>`;
 }
 
 function viewModalNovoRecado(){
-  const opcoes = (estado.funcionarios||[]).filter(f=>f.usuario!==estado.usuario && (estado.papel==='admin' || f.franquia===estado.franquia));
+  const colegas = (estado.funcionarios||[]).filter(f=>f.usuario!==estado.usuario && (estado.papel==='admin' || f.franquia===estado.franquia));
   return `
     <div class="sobreposicao" onclick="app.fecharModalSeClicarForaNovoRecado(event)">
       <div class="modal-caixa">
-        <h3>Novo recado</h3>
+        <h3>Novo post-it</h3>
         <form onsubmit="app.salvarNovoRecado(event)">
           <label>Para
             <select id="destinatarioNovoRecado" required>
               <option value="">— selecione —</option>
-              ${opcoes.map(f=>`<option value="${escapeHtml(f.usuario)}">${escapeHtml(f.usuario)}</option>`).join('')}
+              <option value="${escapeHtml(estado.usuario)}">📌 Você mesmo (lembrete)</option>
+              ${colegas.map(f=>`<option value="${escapeHtml(f.usuario)}">${escapeHtml(f.usuario)}</option>`).join('')}
             </select>
           </label>
           <label>Mensagem<textarea id="textoNovoRecado" rows="4" required placeholder="Escreva o recado…"></textarea></label>
-          ${opcoes.length===0 ? '<p style="font-size:12px;color:var(--ink-soft)">Nenhum colega disponível pra receber recados ainda.</p>' : ''}
           ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
           ${estado.enviando ? barraProgresso() : ''}
           <div class="acoes-modal">
             <button type="button" class="botao-secundario" onclick="app.fecharNovoRecado()" ${estado.enviando?'disabled':''}>Cancelar</button>
-            <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Enviando…':'Enviar recado'}</button>
+            <button type="submit" class="botao-primario" ${estado.enviando?'disabled':''}>${estado.enviando?'Enviando…':'Enviar'}</button>
           </div>
         </form>
       </div>
@@ -2646,7 +2691,7 @@ function viewModalNovoUsuario(){
           ${ehGerente
             ? `<p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 0">Como gerente, você só pode criar Colaboradores da sua própria Franquia (${escapeHtml(estado.franquia||'')}).</p>`
             : `<p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 0">Deixe a Franquia em branco se o usuário deve ver e lançar registros de todas as Franquias. Se o papel escolhido for Gerente, a Franquia passa a ser obrigatória.</p>`}
-          <label>Cor do post-it (aba Cards)<input type="color" id="corPostItNovoUsuario" value="${COR_POST_IT_PADRAO}"></label>
+          <label>Cor do post-it<input type="color" id="corPostItNovoUsuario" value="${COR_POST_IT_PADRAO}"></label>
           ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
           ${estado.enviando ? barraProgresso() : ''}
           <div class="acoes-modal">
@@ -2681,7 +2726,7 @@ function viewModalEditarUsuario(){
               ${opcoesFranquia.map(op=>`<option value="${escapeHtml(op)}" ${op===franquia?'selected':''}>${escapeHtml(op)}</option>`).join('')}
             </select>
           </label>
-          <label>Cor do post-it (aba Cards)<input type="color" id="corPostItEditarUsuario" value="${cor_post_it||COR_POST_IT_PADRAO}"></label>
+          <label>Cor do post-it<input type="color" id="corPostItEditarUsuario" value="${cor_post_it||COR_POST_IT_PADRAO}"></label>
           ${estado.configErro ? `<div class="aviso-erro">${escapeHtml(estado.configErro)}</div>` : ''}
           ${estado.enviando ? barraProgresso() : ''}
           <div class="acoes-modal">
@@ -3096,30 +3141,38 @@ const app = {
     estado.recadoRespondendo = null;
     renderizar();
   },
-  async enviarRespostaPostIt(id){
+  async enviarMensagemRecado(id){
     const campo = document.getElementById('respostaRecado_'+id);
-    const resposta = campo ? campo.value.trim() : '';
+    const texto = campo ? campo.value.trim() : '';
+    if(!texto) { if(campo) campo.focus(); return; }
     estado.enviando = true;
     renderizar();
-    const resp = await apiCall('responderRecado', { id, resposta, usuarioLogado: estado.usuario });
+    const resp = await apiCall('adicionarMensagemRecado', { id, texto, usuarioLogado: estado.usuario });
     estado.enviando = false;
     if(resp.ok){
-      estado.recados.recebidos = (estado.recados.recebidos||[]).filter(r=>r.id!==id);
+      const atualizarLista = lista => (lista||[]).map(r=>r.id===id ? resp.recado : r);
+      if(estado.recados){
+        estado.recados.recebidos = atualizarLista(estado.recados.recebidos);
+        estado.recados.enviados = atualizarLista(estado.recados.enviados);
+      }
       estado.recadoRespondendo = null;
-      estado.recadosArquivados = null; // força recarregar na próxima vez que abrir "Arquivados"
     } else {
-      alert('Não foi possível responder: ' + (resp.erro || 'erro desconhecido.'));
+      alert('Não foi possível enviar: ' + (resp.erro || 'erro desconhecido.'));
     }
     renderizar();
   },
-  async fecharRecadoEnviado(id){
-    const resp = await apiCall('fecharRecadoRemetente', { id, usuarioLogado: estado.usuario });
+  async excluirRecadoConversa(id){
+    if(!confirm('Excluir essa conversa? Ela deixa de aparecer pros dois lados e vai pro Arquivado.')) return;
+    const resp = await apiCall('excluirRecado', { id, usuarioLogado: estado.usuario });
     if(resp.ok){
-      estado.recados.enviados = (estado.recados.enviados||[]).filter(r=>r.id!==id);
+      if(estado.recados){
+        estado.recados.recebidos = (estado.recados.recebidos||[]).filter(r=>r.id!==id);
+        estado.recados.enviados = (estado.recados.enviados||[]).filter(r=>r.id!==id);
+      }
       estado.recadosArquivados = null; // força recarregar na próxima vez que abrir "Arquivados"
       renderizar();
     } else {
-      alert('Não foi possível fechar: ' + (resp.erro || 'erro desconhecido.'));
+      alert('Não foi possível excluir: ' + (resp.erro || 'erro desconhecido.'));
     }
   },
   async alternarArquivados(){
