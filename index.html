@@ -249,30 +249,56 @@
   .celula-cabecalho-dia-horario.dia-hoje{ color:var(--accent-deep); }
   .corpo-coluna-dia-horario{ position:relative; }
   .linha-hora{ border-bottom:1px solid rgba(0,0,0,0.05); box-sizing:border-box; }
-  .evento-calendario{ position:absolute; left:2px; right:2px; background:var(--cor-evento, var(--accent)); color:#fff; border-radius:4px; padding:2px 5px; font-size:10.5px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; cursor:pointer; height:20px; display:flex; align-items:center; gap:4px; }
-  .hora-evento-calendario{ font-size:9px; opacity:.9; flex:0 0 auto; }
-  .texto-evento-calendario{ overflow:hidden; text-overflow:ellipsis; }
+  .evento-calendario{ position:absolute; background:var(--cor-evento, var(--accent)); color:#fff; border-radius:5px; padding:3px 7px; font-size:12px; line-height:1.3; overflow:hidden; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:1px; box-sizing:border-box; }
+  .hora-evento-calendario{ font-size:10.5px; font-weight:700; opacity:.95; }
+  .texto-evento-calendario{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   .cabecalho-bloco-acao{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .botoes-enviar-bloco{ display:flex; gap:4px; }
   .botoes-enviar-bloco .botao-icone{ padding:2px 6px; font-size:12px; }
 
   /* ---------- CARDS (post-its) ---------- */
-  .quadro-recados{ position:relative; min-height:420px; background:var(--paper-deep); border:1px dashed var(--rule); border-radius:10px; overflow:hidden; }
-  .post-it{
-    position:absolute; width:200px; min-height:120px; padding:12px 14px; border-radius:3px;
-    box-shadow:0 6px 14px rgba(0,0,0,0.18); transform:rotate(-1.5deg); cursor:grab; user-select:none;
-    font-family:'IBM Plex Sans', sans-serif; color:#241a05;
+  .quadro-recados{
+    position:relative; min-height:460px; border-radius:8px; overflow:hidden;
+    border:8px solid #8a6239;
+    background-color:#C68E58;
+    background-image:
+      radial-gradient(circle at 15% 25%, rgba(255,255,255,0.10) 0, transparent 3px),
+      radial-gradient(circle at 55% 60%, rgba(0,0,0,0.14) 0, transparent 3px),
+      radial-gradient(circle at 80% 15%, rgba(255,255,255,0.08) 0, transparent 2px),
+      radial-gradient(circle at 35% 85%, rgba(0,0,0,0.12) 0, transparent 2px),
+      radial-gradient(circle at 90% 75%, rgba(0,0,0,0.10) 0, transparent 2px),
+      radial-gradient(circle at 10% 65%, rgba(255,255,255,0.07) 0, transparent 2px);
+    background-size: 34px 34px;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.30);
   }
-  .post-it:nth-child(even){ transform:rotate(1.5deg); }
-  .post-it:active{ cursor:grabbing; }
-  .post-it-remetente{ font-weight:700; font-size:12px; margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em; }
+  .quadro-recados .vazio-inline{ color:rgba(255,255,255,0.85); font-style:italic; }
+  .post-it{
+    position:absolute; width:200px; min-height:120px; padding:16px 14px 12px;
+    box-shadow:3px 8px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35);
+    transform:rotate(-2deg); cursor:grab; user-select:none;
+    font-family:'IBM Plex Sans', sans-serif; color:#241a05;
+    background-image: linear-gradient(rgba(255,255,255,0.08), rgba(0,0,0,0.03));
+  }
+  .post-it::before{
+    content:''; position:absolute; top:-9px; left:50%; transform:translateX(-50%);
+    width:15px; height:15px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #ff8080, #a72424 75%);
+    box-shadow:0 2px 4px rgba(0,0,0,0.45), inset 0 -1px 2px rgba(0,0,0,0.3);
+  }
+  .post-it:nth-child(even){ transform:rotate(2deg); }
+  .post-it:nth-child(3n){ transform:rotate(-1deg); }
+  .post-it:active{ cursor:grabbing; box-shadow:5px 12px 20px rgba(0,0,0,0.4); }
+  .post-it-remetente{ font-weight:700; font-size:12px; margin-bottom:2px; text-transform:uppercase; letter-spacing:.03em; }
+  .post-it-data{ font-size:10px; opacity:.75; margin-bottom:8px; }
   .post-it-texto{ font-size:13.5px; white-space:pre-wrap; line-height:1.4; margin-bottom:10px; }
   .post-it-botao-responder{ background:rgba(255,255,255,0.55); border:1px solid rgba(0,0,0,0.15); border-radius:5px; padding:5px 9px; font-size:12px; font-weight:600; cursor:pointer; }
   .post-it-resposta{ width:100%; box-sizing:border-box; min-height:56px; font-size:12.5px; margin-bottom:8px; }
   .post-it-acoes{ display:flex; gap:6px; justify-content:flex-end; }
-  .cartao-recado-enviado{ background:var(--card); border:1px solid var(--rule); border-radius:8px; padding:14px 16px; margin-bottom:10px; box-shadow:var(--sombra); }
-  .resposta-recado-enviado{ background:var(--paper-deep); border-radius:6px; padding:8px 10px; font-size:13px; margin-top:6px; }
+  .grade-recados-enviados{ display:flex; flex-wrap:wrap; gap:26px 20px; padding:8px 4px 4px; }
+  .post-it-estatico{ position:static !important; cursor:default !important; }
+  .post-it-estatico:active{ cursor:default !important; }
+  .resposta-recado-enviado{ background:rgba(255,255,255,0.55); border-radius:6px; padding:8px 10px; font-size:13px; margin-top:6px; }
   .cabecalho-bloco-calendario{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
   @media (max-width: 760px){
     .dia-calendario{ min-height:44px; padding:4px; }
@@ -329,7 +355,7 @@ const CONFIG = {
 // mudança que valha marcar (não é automático, é só um texto fixo).
 const SISTEMA = {
   NOME: 'Parakos',
-  VERSAO: 'v2.0.0',
+  VERSAO: 'v2.2.0',
   DESENVOLVEDOR: 'DSP Group',
   INSTAGRAM: 'dspgrupointegra',
   INSTAGRAM_URL: 'https://www.instagram.com/dspgrupointegra/'
@@ -739,6 +765,12 @@ function demoAtualizarPosicaoRecado(d){
   recado.pos_y = d.posY;
   return { ok:true };
 }
+function demoListarRecadosArquivados(d){
+  const usuario = d.usuario;
+  const recebidos = DEMO_DB.recados.filter(r=>r.destinatario===usuario && r.fechado_destinatario);
+  const enviados = DEMO_DB.recados.filter(r=>r.remetente===usuario && r.fechado_remetente);
+  return { ok:true, recebidos, enviados };
+}
 
 // ---- Configurações (admin): identidade visual (logomarca + cores) ----
 function demoConfigSistema(){
@@ -1122,6 +1154,16 @@ async function supabaseAtualizarPosicaoRecado(d){
   if(error) return { ok:false, erro:'Falha ao mover recado: ' + error.message };
   return { ok:true };
 }
+async function supabaseListarRecadosArquivados(d){
+  const usuario = d.usuario;
+  const [respRecebidos, respEnviados] = await Promise.all([
+    clienteSupabase().from('recados').select('*').eq('destinatario', usuario).eq('fechado_destinatario', true).order('criado_em', { ascending:false }),
+    clienteSupabase().from('recados').select('*').eq('remetente', usuario).eq('fechado_remetente', true).order('criado_em', { ascending:false })
+  ]);
+  if(respRecebidos.error) return { ok:false, erro:'Falha ao carregar arquivados: ' + respRecebidos.error.message };
+  if(respEnviados.error) return { ok:false, erro:'Falha ao carregar arquivados: ' + respEnviados.error.message };
+  return { ok:true, recebidos: respRecebidos.data, enviados: respEnviados.data };
+}
 
 // ---- Configurações (admin): identidade visual (logomarca + cores) ----
 async function supabaseConfigSistema(){
@@ -1210,6 +1252,7 @@ function apiCall(action, data){
           case 'responderRecado': resultado = demoResponderRecado(data); break;
           case 'fecharRecadoRemetente': resultado = demoFecharRecadoRemetente(data); break;
           case 'atualizarPosicaoRecado': resultado = demoAtualizarPosicaoRecado(data); break;
+          case 'listarRecadosArquivados': resultado = demoListarRecadosArquivados(data); break;
           case 'criarUsuario': resultado = demoCriarUsuario(data); break;
           case 'excluirUsuario': resultado = demoExcluirUsuario(data); break;
           case 'editarUsuario': resultado = demoEditarUsuario(data); break;
@@ -1248,6 +1291,7 @@ function apiCall(action, data){
     case 'responderRecado': return comTratativaDeErro(()=>supabaseResponderRecado(data));
     case 'fecharRecadoRemetente': return comTratativaDeErro(()=>supabaseFecharRecadoRemetente(data));
     case 'atualizarPosicaoRecado': return comTratativaDeErro(()=>supabaseAtualizarPosicaoRecado(data));
+    case 'listarRecadosArquivados': return comTratativaDeErro(()=>supabaseListarRecadosArquivados(data));
     case 'criarUsuario': return comTratativaDeErro(()=>supabaseCriarUsuario(data));
     case 'excluirUsuario': return comTratativaDeErro(()=>supabaseExcluirUsuario(data));
     case 'editarUsuario': return comTratativaDeErro(()=>supabaseEditarUsuario(data));
@@ -1299,7 +1343,9 @@ function estadoInicial(){
     calendarioDiaRef:null,
     recados:null,
     modalNovoRecado:null,
-    recadoRespondendo:null
+    recadoRespondendo:null,
+    recadosArquivados:null,
+    mostrarArquivados:false
   };
 }
 let estado = estadoInicial();
@@ -1777,16 +1823,57 @@ function viewCalendarioAnual(){
 
 // horas mostradas na grade estilo Google Calendar (0h à 23h)
 const HORAS_GRADE_CALENDARIO = Array.from({length:24}, (_,i)=>i);
-const ALTURA_HORA_CALENDARIO = 48; // px por hora
+const ALTURA_HORA_CALENDARIO = 60; // px por hora
+const DURACAO_VISUAL_EVENTO_MIN = 30; // ações não têm duração real; usamos isso só pra decidir o layout (colunas)
+
+// agrupa eventos próximos no horário e organiza em colunas lado a lado
+// (igual o Google Calendar faz quando dois compromissos coincidem)
+function calcularLayoutEventosDoDia(entradas){
+  const itens = entradas.map(({reg,bloco})=>{
+    const partesHora = (bloco.dataHora||'').split(' ')[1] || '00:00';
+    const [h,m] = partesHora.split(':').map(Number);
+    const inicioMin = h*60 + (m||0);
+    return { reg, bloco, partesHora, inicioMin, fimMin: inicioMin + DURACAO_VISUAL_EVENTO_MIN, coluna:0, totalColunas:1 };
+  }).sort((a,b)=>a.inicioMin-b.inicioMin);
+
+  let clusterAtual = [], fimMaximoCluster = -Infinity;
+  const clusters = [];
+  itens.forEach(item=>{
+    if(clusterAtual.length===0 || item.inicioMin < fimMaximoCluster){
+      clusterAtual.push(item);
+      fimMaximoCluster = Math.max(fimMaximoCluster, item.fimMin);
+    } else {
+      clusters.push(clusterAtual);
+      clusterAtual = [item];
+      fimMaximoCluster = item.fimMin;
+    }
+  });
+  if(clusterAtual.length) clusters.push(clusterAtual);
+
+  clusters.forEach(cluster=>{
+    const fimPorColuna = [];
+    cluster.forEach(item=>{
+      let colocado = false;
+      for(let c=0;c<fimPorColuna.length;c++){
+        if(fimPorColuna[c] <= item.inicioMin){ item.coluna = c; fimPorColuna[c] = item.fimMin; colocado = true; break; }
+      }
+      if(!colocado){ item.coluna = fimPorColuna.length; fimPorColuna.push(item.fimMin); }
+    });
+    cluster.forEach(item=>{ item.totalColunas = fimPorColuna.length; });
+  });
+  return itens;
+}
 
 function renderizarEventosDoDia(chaveDia, mapaAcoes){
   const entradas = mapaAcoes[chaveDia] || [];
-  return entradas.map(({reg,bloco},i)=>{
-    const partesHora = (bloco.dataHora||'').split(' ')[1] || '00:00';
-    const [h,m] = partesHora.split(':').map(Number);
-    const topo = (h + (m||0)/60) * ALTURA_HORA_CALENDARIO;
+  const itens = calcularLayoutEventosDoDia(entradas);
+  return itens.map(({reg,bloco,partesHora,inicioMin,coluna,totalColunas})=>{
+    const topo = (inicioMin/60) * ALTURA_HORA_CALENDARIO;
+    const altura = Math.max(30, (DURACAO_VISUAL_EVENTO_MIN/60) * ALTURA_HORA_CALENDARIO);
+    const largura = 100/totalColunas;
+    const esquerda = coluna*largura;
     const cor = corPaleta(0);
-    return `<div class="evento-calendario" style="top:${topo}px;--cor-evento:${cor}" onclick="app.abrirDiaCalendario('${chaveDia}')" title="${escapeHtml(bloco.linhasTexto.join(' '))}">
+    return `<div class="evento-calendario" style="top:${topo}px; height:${altura}px; left:calc(${esquerda}% + 2px); width:calc(${largura}% - 4px); --cor-evento:${cor}" onclick="app.abrirDiaCalendario('${chaveDia}')" title="${escapeHtml(bloco.linhasTexto.join(' '))}">
       <span class="hora-evento-calendario mono">${escapeHtml(partesHora)}</span>
       <span class="texto-evento-calendario">${escapeHtml(reg['Franquia']||'')} — ${escapeHtml(bloco.linhasTexto[0]||'')}</span>
     </div>`;
@@ -1907,18 +1994,62 @@ function viewCards(){
       ${recebidos.length===0 ? '<p class="vazio-inline" style="padding:22px">Nenhum recado por aqui no momento.</p>' : recebidos.map(r=>viewPostIt(r)).join('')}
     </div>
     <h3 style="margin:26px 0 10px">Enviados</h3>
-    <div class="lista-recados-enviados">
+    <div class="grade-recados-enviados">
       ${enviados.length===0 ? '<p class="vazio-inline">Você não tem recados pendentes enviados.</p>' : enviados.map(r=>viewRecadoEnviado(r)).join('')}
     </div>
+    ${viewSecaoArquivados()}
     ${estado.modalNovoRecado ? viewModalNovoRecado() : ''}
   `;
+}
+
+function viewSecaoArquivados(){
+  const arq = estado.recadosArquivados;
+  const total = arq ? (arq.recebidos.length + arq.enviados.length) : null;
+  return `
+    <div style="margin-top:28px">
+      <button type="button" class="botao-secundario" onclick="app.alternarArquivados()">
+        ${estado.mostrarArquivados ? '▾ Ocultar arquivados' : `▸ Ver arquivados${total!=null?` (${total})`:''}`}
+      </button>
+      ${estado.mostrarArquivados ? `
+        <div style="margin-top:14px">
+          ${!arq ? '<p class="vazio-inline">Carregando…</p>' : (
+            total===0
+              ? '<p class="vazio-inline">Nenhum recado arquivado ainda.</p>'
+              : `<div class="grade-recados-enviados">
+                  ${arq.recebidos.map(r=>viewRecadoArquivado(r,'recebido')).join('')}
+                  ${arq.enviados.map(r=>viewRecadoArquivado(r,'enviado')).join('')}
+                 </div>`
+          )}
+        </div>
+      ` : ''}
+    </div>`;
+}
+
+function viewRecadoArquivado(r, direcao){
+  const cor = corPostItUsuario(r.remetente);
+  const rotulo = direcao==='recebido' ? `De: ${r.remetente}` : `Para: ${r.destinatario}`;
+  return `<div class="post-it post-it-estatico" style="background-color:${escapeHtml(cor)}">
+    <div class="post-it-remetente">${escapeHtml(rotulo)}</div>
+    <div class="post-it-data mono">${escapeHtml(formatarDataHoraCompleta(r.criado_em))}</div>
+    <div class="post-it-texto">${escapeHtml(r.texto)}</div>
+    ${r.resposta ? `<div class="resposta-recado-enviado"><strong>Resposta:</strong> ${escapeHtml(r.resposta)}</div>` : ''}
+  </div>`;
+}
+
+// formata um timestamp ISO (vindo do banco) como "dd/mm/aaaa hh:mm"
+function formatarDataHoraCompleta(isoStr){
+  if(!isoStr) return '';
+  const d = new Date(isoStr);
+  if(isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
 function viewPostIt(r){
   const cor = corPostItUsuario(r.remetente);
   const respondendo = estado.recadoRespondendo === r.id;
-  return `<div class="post-it" style="left:${r.pos_x}px; top:${r.pos_y}px; background:${escapeHtml(cor)}" data-id="${escapeHtml(r.id)}" onmousedown="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')" ontouchstart="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')">
+  return `<div class="post-it" style="left:${r.pos_x}px; top:${r.pos_y}px; background-color:${escapeHtml(cor)}" data-id="${escapeHtml(r.id)}" onmousedown="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')" ontouchstart="app.iniciarArrastePostIt(event,'${escapeHtml(r.id)}')">
     <div class="post-it-remetente">${escapeHtml(r.remetente)}</div>
+    <div class="post-it-data mono">${escapeHtml(formatarDataHoraCompleta(r.criado_em))}</div>
     <div class="post-it-texto">${escapeHtml(r.texto)}</div>
     ${respondendo ? `
       <textarea class="post-it-resposta" id="respostaRecado_${escapeHtml(r.id)}" placeholder="Escreva sua resposta…" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()"></textarea>
@@ -1933,13 +2064,15 @@ function viewPostIt(r){
 }
 
 function viewRecadoEnviado(r){
-  return `<div class="cartao-recado-enviado">
-    <div style="font-weight:600">Para: ${escapeHtml(r.destinatario)}</div>
-    <div class="texto-bloco-acao" style="margin:4px 0">${escapeHtml(r.texto)}</div>
+  const cor = corPostItUsuario(r.remetente);
+  return `<div class="post-it post-it-estatico" style="background-color:${escapeHtml(cor)}">
+    <div class="post-it-remetente">Para: ${escapeHtml(r.destinatario)}</div>
+    <div class="post-it-data mono">${escapeHtml(formatarDataHoraCompleta(r.criado_em))}</div>
+    <div class="post-it-texto">${escapeHtml(r.texto)}</div>
     ${r.resposta
-      ? `<div class="resposta-recado-enviado"><strong>Resposta:</strong> ${escapeHtml(r.resposta)}</div>
+      ? `<div class="resposta-recado-enviado"><strong>Resposta:</strong> ${escapeHtml(r.resposta)}${r.respondido_em ? ` <span class="mono" style="font-size:10px;opacity:.75">(${escapeHtml(formatarDataHoraCompleta(r.respondido_em))})</span>` : ''}</div>
          <button type="button" class="botao-secundario" style="margin-top:8px" onclick="app.fecharRecadoEnviado('${escapeHtml(r.id)}')">Fechar</button>`
-      : `<p class="vazio-inline">Aguardando resposta…</p>`}
+      : `<p class="vazio-inline" style="color:rgba(36,26,5,0.6)">Aguardando resposta…</p>`}
   </div>`;
 }
 
@@ -2973,6 +3106,7 @@ const app = {
     if(resp.ok){
       estado.recados.recebidos = (estado.recados.recebidos||[]).filter(r=>r.id!==id);
       estado.recadoRespondendo = null;
+      estado.recadosArquivados = null; // força recarregar na próxima vez que abrir "Arquivados"
     } else {
       alert('Não foi possível responder: ' + (resp.erro || 'erro desconhecido.'));
     }
@@ -2982,10 +3116,20 @@ const app = {
     const resp = await apiCall('fecharRecadoRemetente', { id, usuarioLogado: estado.usuario });
     if(resp.ok){
       estado.recados.enviados = (estado.recados.enviados||[]).filter(r=>r.id!==id);
+      estado.recadosArquivados = null; // força recarregar na próxima vez que abrir "Arquivados"
       renderizar();
     } else {
       alert('Não foi possível fechar: ' + (resp.erro || 'erro desconhecido.'));
     }
+  },
+  async alternarArquivados(){
+    estado.mostrarArquivados = !estado.mostrarArquivados;
+    if(estado.mostrarArquivados && !estado.recadosArquivados){
+      renderizar();
+      const resp = await apiCall('listarRecadosArquivados', { usuario: estado.usuario });
+      if(resp.ok) estado.recadosArquivados = { recebidos: resp.recebidos, enviados: resp.enviados };
+    }
+    renderizar();
   },
 
   // arrastar-e-soltar do post-it: manipula o DOM diretamente durante o
